@@ -1,5 +1,5 @@
 # MIDI Utils
-* Python3.x
+* Python2.x
 
 ## Development Environment Setup
 1. Update pip.
@@ -9,7 +9,7 @@ pip install --upgrade pip
 
 2. Create a virtual environment.
 ```
-python3 -m venv [name]
+python -m venv [name]
 ```
 
 3. Activate a virtual environment.
