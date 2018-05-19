@@ -31,7 +31,7 @@ import zipfile
 # internal imports
 
 import six
-import constants
+import magenta.constants
 
 DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
 DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)
@@ -154,7 +154,7 @@ class MusicXMLDocument(object):
     self.parts = []
     # ScoreParts indexed by id.
     self._score_parts = {}
-    self.midi_resolution = constants.STANDARD_PPQ
+    self.midi_resolution = magenta.constants.STANDARD_PPQ
     self._state = MusicXMLParserState()
     # Total time in seconds
     self.total_time_secs = 0
@@ -591,9 +591,9 @@ class Measure(object):
 
     xml_duration = xml_backup.find('duration')
     backup_duration = int(xml_duration.text)
-    midi_ticks = backup_duration * (constants.STANDARD_PPQ
+    midi_ticks = backup_duration * (magenta.constants.STANDARD_PPQ
                                     / self.state.divisions)
-    seconds = ((midi_ticks / constants.STANDARD_PPQ)
+    seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position -= seconds
 
@@ -621,9 +621,9 @@ class Measure(object):
 
     xml_duration = xml_forward.find('duration')
     forward_duration = int(xml_duration.text)
-    midi_ticks = forward_duration * (constants.STANDARD_PPQ
+    midi_ticks = forward_duration * (magenta.constants.STANDARD_PPQ
                                      / self.state.divisions)
-    seconds = ((midi_ticks / constants.STANDARD_PPQ)
+    seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position += seconds
 
@@ -864,9 +864,9 @@ class NoteDuration(object):
       self.duration = self.state.previous_note.note_duration.duration
 
     self.midi_ticks = self.duration
-    self.midi_ticks *= (constants.STANDARD_PPQ / self.state.divisions)
+    self.midi_ticks *= (magenta.constants.STANDARD_PPQ / self.state.divisions)
 
-    self.seconds = (self.midi_ticks / constants.STANDARD_PPQ)
+    self.seconds = (self.midi_ticks / magenta.constants.STANDARD_PPQ)
     self.seconds *= self.state.seconds_per_quarter
 
     self.time_position = self.state.time_position
@@ -1114,8 +1114,8 @@ class ChordSymbol(object):
         except ValueError:
           raise ChordSymbolParseException('Non-integer offset: ' +
                                           str(child.text))
-        midi_ticks = offset * constants.STANDARD_PPQ / self.state.divisions
-        seconds = (midi_ticks / constants.STANDARD_PPQ *
+        midi_ticks = offset * magenta.constants.STANDARD_PPQ / self.state.divisions
+        seconds = (midi_ticks / magenta.constants.STANDARD_PPQ *
                    self.state.seconds_per_quarter)
         self.time_position += seconds
       else:
@@ -1343,7 +1343,7 @@ class Tempo(object):
     self.qpm = float(self.xml_sound.get('tempo'))
     if self.qpm == 0:
       # If tempo is 0, set it to default
-      self.qpm = constants.DEFAULT_QUARTERS_PER_MINUTE
+      self.qpm = magenta.constants.DEFAULT_QUARTERS_PER_MINUTE
     self.time_position = self.state.time_position
 
   def __str__(self):
