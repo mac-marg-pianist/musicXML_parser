@@ -599,7 +599,7 @@ class Measure(object):
 
   def _parse_direction(self, xml_direction):
     """Parse the MusicXML <direction> element."""
-
+    # 수정 필요
     for child in xml_direction:
       if child.tag == 'sound':
         if child.get('tempo') is not None:
@@ -776,7 +776,7 @@ class Note(object):
     midi_pitch = self.pitch_to_midi_pitch(step, alter, octave)
     # Transpose MIDI pitch
     midi_pitch += self.state.transpose
-    self.pitch = (pitch_string, midi_pitch)
+    self.pitch = {'pitch_string': pitch_string, 'midi_pitch': midi_pitch}
 
   def _parse_tuplet(self, xml_time_modification):
     """Parses a tuplet ratio.
@@ -1350,3 +1350,9 @@ class Tempo(object):
     tempo_str = 'Tempo: ' + str(self.qpm)
     tempo_str += ' (@time: ' + str(self.time_position) + ')'
     return tempo_str
+
+
+
+class Direction(object):
+  """"
+  """
