@@ -704,7 +704,7 @@ class Note(object):
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
     self.state = state
-    self.tied = False
+    self.tie = False
     self._parse()
 
   def _parse(self):
@@ -736,10 +736,10 @@ class Note(object):
       elif child.tag == 'unpitched':
         raise UnpitchedNoteException('Unpitched notes are not supported')
       elif child.tag == 'tie':
-        if self.tied ==False:
-          self.tied = child.attrib['type']
+        if self.tie ==False:
+          self.tie = child.attrib['type']
         else:
-          self.tied = 'start_stop'
+          self.tie = 'start_stop'
       else:
         # Ignore other tag types because they are not relevant to Magenta.
         pass
