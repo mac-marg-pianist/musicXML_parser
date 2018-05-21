@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import pretty_midi
 import warnings
 import numpy as np
@@ -63,7 +67,7 @@ def to_midi_zero(midi_path, midi_min=21, midi_max=108, save_midi=False, save_nam
     :return:
         0-type pretty_midi.Pretty_Midi object.
     """
-
+    pretty_midi.pretty_midi.MAX_TICK = 1e10
     if save_name is None:
         save_name = midi_path.replace('.mid', '_midi0.mid')
 
