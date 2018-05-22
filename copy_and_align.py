@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import shutil
 import subprocess
@@ -31,7 +35,7 @@ midi_files = [el.strip() for el in lines]
 '''
 
 # read from folder
-midi_files = utils.find_files_in_subdirs(INPUT_DIR, '*.mid')
+midi_files = utils.find_files_in_subdir(INPUT_DIR, '*.mid')
 
 n_match = 0
 n_unmatch = 0
@@ -46,11 +50,11 @@ for midi_file in midi_files:
         n_match += 1
         continue
 
-    file_folder, file_name = utils.split_path_from_path(midi_file)
+    file_folder, file_name = utils.split_head_and_tail(midi_file)
     perform_midi = midi_file
     score_midi = os.path.join(file_folder, 'midi.mid')
-    print perform_midi
-    print score_midi
+    print(perform_midi)
+    print(score_midi)
 
     mid = pretty_midi.PrettyMIDI(score_midi)
 
@@ -68,13 +72,13 @@ for midi_file in midi_files:
     try:
         subprocess.check_call(["sudo", "sh", "MIDIToMIDIAlign.sh", "score", "infer"])
     except:
-        print 'Error to process {}'.format(midi_file)
+        print('Error to process {}'.format(midi_file))
         pass
     else:
         shutil.move('infer_corresp.txt', midi_file.replace('.mid', '_infer_corresp.txt'))
         shutil.move('infer_match.txt', midi_file.replace('.mid', '_infer_match.txt'))
         shutil.move('infer_spr.txt', midi_file.replace('.mid', '_infer_spr.txt'))
         shutil.move('score_spr.txt', os.path.join(args.align_dir, '_score_spr.txt'))
-print 'match:{:d}, unmatch:{:d}'.format(n_match, n_unmatch)
+print('match:{:d}, unmatch:{:d}'.format(n_match, n_unmatch))
 
 
