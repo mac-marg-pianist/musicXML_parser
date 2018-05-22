@@ -1384,4 +1384,50 @@ class Direction(object):
     self._parse()
 
   def _parse(self):
-    return
+    """Parse the MusicXML <direction> element."""
+    DIRECTION_TAG = ['dynamics',' pedal', 'wedge', 'words']
+
+    for direction in self.xml_direction:
+      self._parse_sound(direction)
+      direction_type = direction.find('direction-type')
+      for tag in DIRECTION_TAG:
+        child = direction_type.find(tag)
+        if child is not None:
+          if child.tag == "dynamics":
+            self._parse_dynamics(child)
+          if child.tag == "pedal":
+            self._parse_pedal(child)
+          if child.tag == "wedge":
+            self._parse_wedge(child)
+          if child.tag == "words":
+            self._parse_words(child)
+
+  def _parse_pedal(self, xml_pedal):
+    """Parse the MusicXML <pedal> element."""
+    pedal = xml_pedal.attrib
+    self.pedal = pedal,
+
+  def _parse_sound(self, xml_direction):
+    """Parse the MusicXML <sound> element."""
+    sound_tag = xml_direction.find('sound')
+    if sound_tag is not None:
+      attrib = sound_tag.attrib
+      if 'dynamics' in attrib:
+        self.velocity = attrib['dynamics']
+      elif 'tempo' in attrib:
+        self.tempo = attrib['tempo']
+
+  def _parse_dynamics(self, xml_dynamics):
+    """Parse the MusicXML <dynamics> element."""
+    dynamic = xml_dynamics.getchildren()[0].tag
+    self.dynamic = dynamic
+
+  def _parse_wedge(self, xml_wedge):
+    """Parse the MusicXML <wedge> element."""
+    wedge = xml_wedge.attrib
+    self.wedge = wedge
+
+  def _parse_words(self, xml_words):
+    """Parse the MusicXML <words> element."""
+    print(xml_words.text)
+    self.words = xml_words.text
