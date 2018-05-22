@@ -1,5 +1,5 @@
 from magenta import MusicXMLDocument
-XMLDocument = MusicXMLDocument("magenta/testdata/flute_scale2.musicxml")
+XMLDocument = MusicXMLDocument("magenta/testdata/flute_scale.xml")
 
 midi_resolution = XMLDocument.midi_resolution
 parts = XMLDocument.parts[0]
