@@ -746,7 +746,7 @@ class Note(object):
     if xml_pitch.find('alter') is not None:
       alter_text = xml_pitch.find('alter').text
     octave = xml_pitch.find('octave').text
-
+ 
     # Parse alter string to a float (floats represent microtonal alterations)
     if alter_text:
       alter = float(alter_text)
@@ -771,12 +771,11 @@ class Note(object):
 
     # N.B. - pitch_string does not account for transposition
     pitch_string = step + alter_string + octave
-
     # Compute MIDI pitch number (C4 = 60, C1 = 24, C0 = 12)
     midi_pitch = self.pitch_to_midi_pitch(step, alter, octave)
     # Transpose MIDI pitch
     midi_pitch += self.state.transpose
-    self.pitch = {'pitch_string': pitch_string, 'midi_pitch': midi_pitch}
+    self.pitch = (pitch_string, midi_pitch)
 
   def _parse_tuplet(self, xml_time_modification):
     """Parses a tuplet ratio.
@@ -811,9 +810,10 @@ class Note(object):
     else:
       # Raise exception for unknown step (ex: 'Q')
       raise PitchStepParseException('Unable to parse pitch step ' + step)
-
     pitch_class = (pitch_class + int(alter)) % 12
     midi_pitch = (12 + pitch_class) + (int(octave) * 12)
+    print(step, alter, octave, pitch_class, midi_pitch)
+
     return midi_pitch
 
   def __str__(self):
