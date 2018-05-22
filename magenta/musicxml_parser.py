@@ -521,22 +521,25 @@ class Measure(object):
 
   def _parse(self):
     """Parse the <measure> element."""
-
+    # Create new direction
+    direction = []
     for child in self.xml_measure:
       if child.tag == 'attributes':
         self._parse_attributes(child)
       elif child.tag == 'backup':
         self._parse_backup(child)
       elif child.tag == 'direction':
-        self._parse_direction(child)
+        direction.append(child)
       elif child.tag == 'forward':
         self._parse_forward(child)
       elif child.tag == 'note':
-        note = Note(child, self.state)
+        # Add direction if find note 
+        note = Note(child, direction, self.state)
         self.notes.append(note)
         # Keep track of current note as previous note for chord timings
         self.state.previous_note = note
-
+        # Make empty direction
+        direction = []
         # Sum up the MusicXML durations in voice 1 of this measure
         if note.voice == 1 and not note.is_in_chord:
           self.duration += note.note_duration.duration
@@ -601,6 +604,7 @@ class Measure(object):
     """Parse the MusicXML <direction> element."""
     # 수정 필요
     for child in xml_direction:
+      #print(child)
       if child.tag == 'sound':
         if child.get('tempo') is not None:
           tempo = Tempo(self.state, child)
@@ -609,6 +613,10 @@ class Measure(object):
           self.state.seconds_per_quarter = 60 / self.state.qpm
           if child.get('dynamics') is not None:
             self.state.velocity = int(child.get('dynamics'))
+
+      #if child.tag == 'direction-type':
+        #dynamics = child.tag('dynamics').text
+        #print('ff')
 
   def _parse_forward(self, xml_forward):
     """Parse the MusicXML <forward> element.
@@ -694,8 +702,9 @@ class Measure(object):
 
 class Note(object):
   """Internal representation of a MusicXML <note> element."""
+     #   note = Note(child, directions, self.state)
 
-  def __init__(self, xml_note, state):
+  def __init__(self, xml_note, direction, state):
     self.xml_note = xml_note
     self.voice = 1
     self.is_rest = False
@@ -704,6 +713,7 @@ class Note(object):
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
     self.state = state
+    self.direction = Direction(direction)
     self._parse()
 
   def _parse(self):
@@ -812,8 +822,6 @@ class Note(object):
       raise PitchStepParseException('Unable to parse pitch step ' + step)
     pitch_class = (pitch_class + int(alter)) % 12
     midi_pitch = (12 + pitch_class) + (int(octave) * 12)
-    print(step, alter, octave, pitch_class, midi_pitch)
-
     return midi_pitch
 
   def __str__(self):
@@ -1352,7 +1360,28 @@ class Tempo(object):
     return tempo_str
 
 
-
 class Direction(object):
-  """"
+  """Internal representation of a MusicXML Measure's Direction properties.
+  
+  This represents musical dynamic symbols, expressions with six components:
+  1) dynamic
+  2) tempo
+  3) pedal
+  4) wedge
+  5) words
+  6) velocity
+
+  It parses the standard of the marking point of note.
   """
+  def __init__(self, xml_direction=None):
+    self.xml_direction = xml_direction
+    self.dynamic = None  
+    self.tempo = None
+    self.pedal = None 
+    self.wedge = None
+    self.words = None
+    self.velocity = None
+    self._parse()
+
+  def _parse(self):
+    return
