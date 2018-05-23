@@ -1,91 +1,4 @@
-from magenta import MusicXMLDocument
-import pretty_midi
-import midi_utils.midi_utils as midi_utils
 import csv
-
-
-XMLDocument = MusicXMLDocument("magenta/testdata/chopin10-3/xml.xml")
-# midi = pretty_midi.PrettyMIDI("magenta/testdata/chopin10-3/midi.mid")
-midi_cleaned = midi_utils.to_midi_zero("magenta/testdata/chopin10-3/midi.mid")
-perform_midi = midi_utils.to_midi_zero("magenta/testdata/chopin10-3/Sun08.mid")
-perform_midi_notes = perform_midi.instruments[0].notes
-
-
-midi_resolution = XMLDocument.midi_resolution
-parts = XMLDocument.parts[0]
-_score_parts = XMLDocument._score_parts
-_state = XMLDocument._state
-total_time_secs = XMLDocument.total_time_secs
-
-print(midi_resolution)
-print(parts)
-print(_score_parts)
-print('state;', _state)
-print(total_time_secs)
-print(midi_cleaned.__dict__.keys())
-print(midi_cleaned.instruments[0].notes[0])
-
-measure_1 = parts.measures[7].notes
-
-# measure_1 = [[x.pitch, x.is_rest, vars(x.note_duration)] for x in measure_1]
-measure_1 = [x.is_grace_note for x in measure_1]
-
-# print(measure_1)
-melody_notes= []
-
-# print(parts.measures.__attr__)
-
-for i in range(len(parts.measures)):
-    for j in range(len(parts.measures[i].notes)):
-        print(parts.measures[i].notes[j].is_grace_note)
-        # pass
-
-
-print(len(parts.measures))
-
-for measures in parts.measures:
-    for notes in measures.notes:
-        if notes.voice ==1:
-            if not notes.is_rest:
-                melody_notes.append(notes)
-
-for i in range(len(melody_notes)):
-    # print(melody_notes[i].tied)
-    pass
-
-for notes in melody_notes:
-    # print(vars(notes.note_duration))
-    # print(notes.note_duration.time_position)
-    if notes.is_rest == False:
-        if notes.note_duration.time_position == 0:
-            pass
-            # print([vars(notes), vars(notes.note_duration)])
-# # print(measure_1)
-
-# for note in midi_cleaned.instruments[0].notes:
-    # print(note)
-
-
-# print(XMLDocument.parts[0])
-
-
-print(len(melody_notes))
-print(len(midi_cleaned.instruments[0].notes))
-
-
-
-
-
-# print(melody_notes[5])
-#
-# for i in range(len(midi_cleaned.instruments[0].notes)):
-#     print(midi_cleaned.instruments[0].notes[i])
-# #
-#
-# for i in range(len(melody_notes)):
-#     print(melody_notes[i])
-
-
 
 def apply_tied_notes(xml_parsed_notes):
     tie_clean_list = []
@@ -101,12 +14,6 @@ def apply_tied_notes(xml_parsed_notes):
                     break
     return tie_clean_list
 
-
-clean_melody = apply_tied_notes(melody_notes)
-for i in range(len(clean_melody)):
-    # print(clean_melody[i])
-    # print(melody_notes[i])
-    pass
 
 def matchXMLtoMIDI(xml_notes, midi_notes):
     candidates_list = []
@@ -180,8 +87,6 @@ def find_by_attr(list, value1, value2):
     return []
 
 
-
-
 def match_score_pair2perform(pairs, perform_midi, corresp_list):
     match_list = []
     for pair in pairs:
@@ -195,45 +100,25 @@ def match_score_pair2perform(pairs, perform_midi, corresp_list):
         match_list.append(index_in_perform_midi)
     return match_list
 
+def match_xml_midi_perfrom(xml_notes, midi_notes, perform_notes, corresp):
+    match_list = matchXMLtoMIDI(xml_notes, midi_notes)
+    score_pairs = make_xml_midi_pair(xml_notes, midi_notes, match_list)
+    xml_perform_match = match_score_pair2perform(score_pairs, perform_notes, corresp)
+    perform_pairs = make_xml_midi_pair(xml_notes, perform_notes, xml_perform_match)
+
+    return score_pairs, perform_pairs
 
 
+def extract_notes(xml_Doc, melody_only = False):
+    parts = xml_Doc.parts[0]
+    notes =[]
+    for measure in parts.measures:
+        for note in measure.notes:
+            if not note.is_rest:
+                if melody_only:
+                    if note.voice ==1:
+                        notes.append(note)
+                else:
+                    notes.append(note)
 
-    # print(clean_melody[-1])
-
-corresp_list= read_corresp('magenta/testdata/chopin10-3/Sun08_infer_corresp.txt')
-# print(corresp_list)
-
-
-
-match_list = matchXMLtoMIDI(clean_melody, midi_cleaned.instruments[0].notes)
-# print(match_list)
-
-for i in range(len(match_list)):
-    if match_list[i] == []:
-        print([i, clean_melody[i]])
-        # pass
-    # print(clean_melody[i].is_grace_note)
-    pass
-
-
-
-pairs = make_xml_midi_pair(clean_melody, midi_cleaned.instruments[0].notes, match_list)
-
-xml_perform_match = match_score_pair2perform(pairs, perform_midi_notes, corresp_list)
-print(xml_perform_match)
-perform_pairs =  make_xml_midi_pair(clean_melody, perform_midi_notes, xml_perform_match)
-
-
-print(corresp_list[0]['refPitch'])
-print(corresp_list[1]['refOntime'])
-
-
-print(len(pairs))
-#
-#
-# for pair in pairs:
-#     print('XML: ', pair['xml'].pitch, pair['xml'].note_duration.time_position, 'MIDI: ', pair['midi'])
-#
-for pair in perform_pairs:
-    if not pair ==[]:
-        print('XML: ', pair['xml'].pitch, pair['xml'].note_duration.time_position, 'MIDI: ', pair['midi'])
+    return notes
