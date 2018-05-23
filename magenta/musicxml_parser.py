@@ -1431,3 +1431,89 @@ class Direction(object):
     """Parse the MusicXML <words> element."""
     print(xml_words.text)
     self.words = xml_words.text
+   
+class Articulations(object):
+  """Internal representation of a MusicXML Measure's Articulations properties.
+  
+  This represents musical notations symbols, expressions with six components:
+  1) accent
+  2) staccato
+  3) tenuto
+  4) arpeggiate
+  5) fermata
+  6) mordent(invertedmordent/mordent)
+  7) trill
+
+  It parses the standard of the marking point of note.
+  """
+  def __init__(self, xml_direction=None):
+    self.xml_articullations = xml_articullations
+    self.accent = None  
+    self.staccato = None
+    self.tenuto = None 
+    self.arpeggiate = None
+    self.fermata = None
+    self.mordent = None
+    self.trill = None
+    self._parse()
+
+  def _parse(self):
+    """Parse the MusicXML <articulations> element."""
+    ARTICULATIONS_TAG = ['accent',' staccato', 'tenuto', 'arpeggiate', 'fermata', 'mordent', 'trill']
+
+    for articulations in self.xml_articullations:
+      self._parse_sound(articulations)
+      articulations_type = articulations.find('articulations-type')
+      for tag in ARTICULATIONS_TAG:
+        child = direction_type.find(tag)
+        if child is not None:
+          if child.tag == "accent":
+            self._parse_accent(child)
+          if child.tag == "staccato":
+            self._parse_staccato(child)
+          if child.tag == "tenuto":
+            self._parse_tenuto(child)
+          if child.tag == "arpeggiate":
+            self._parse_arpeggiate(child)
+          if child.tag == "fermata":
+            self._parse_fermata(child)
+          if child.tag == "mordent":
+            self._parse_mordent(child)
+          if child.tag == "trill":
+            self._parse_trill(child)
+            
+
+  def _parse_sound(self, xml_articullations):
+    """Parse the MusicXML <sound> element."""
+    sound_tag = xml_articullations.find('sound')
+    if sound_tag is not None:
+      attrib = sound_tag.attrib
+      if 'accent' in attrib:
+        self.accent = attrib['accent']
+      elif 'staccato' in attrib:
+        self.staccato = attrib['staccato']
+
+  def _parse_tenuto(self, xml_tenuto):
+    """Parse the MeasureXML <tenuto> element."""
+    tenuto = xml_tenuto.attrib
+    self.tenuto = tenuto
+
+  def _parse_fermata(self, xml_fermata):
+    """Parse the MusicXML <fermata> element."""
+    fermata = xml_fermata.getchildren()[0].tag
+    self.fermata = fermata
+
+  def _parse_arpeggiate(self, xml_arpeggiate):
+    """Parse the MusicXML <arpeggiate> element."""
+    arpeggiate = xml_arpeggiate.attrib
+    self.arpeggiate = arpeggiate
+
+  def _parse_mordent(self, xml_mordent):
+    """Parse the MusicXML <mordent> element."""
+    mordent = xml_mordent.attrib
+    self.mordent = xml_mordent
+
+  def _parse_trill(self, xml_trill):
+    """Parse the MusicXML <trill> element."""
+    trill = xml_trill.attrib
+    self.trill = xml_trill
