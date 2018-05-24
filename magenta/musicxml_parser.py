@@ -606,6 +606,7 @@ class Measure(object):
   def _parse_direction(self, xml_direction):
     """Parse the MusicXML <direction> element."""
     for child in xml_direction:
+      #print(child)
       if child.tag == 'sound':
         if child.get('tempo') is not None:
           tempo = Tempo(self.state, child)
@@ -614,6 +615,10 @@ class Measure(object):
           self.state.seconds_per_quarter = 60 / self.state.qpm
           if child.get('dynamics') is not None:
             self.state.velocity = int(child.get('dynamics'))
+
+      #if child.tag == 'direction-type':
+        #dynamics = child.tag('dynamics').text
+        #print('ff')
 
   def _parse_forward(self, xml_forward):
     """Parse the MusicXML <forward> element.
