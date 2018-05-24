@@ -529,7 +529,10 @@ class Measure(object):
       elif child.tag == 'backup':
         self._parse_backup(child)
       elif child.tag == 'direction':
+        # Append new direction
         direction.append(child)
+        # Get tempo in <sound /> and update state tempo and time_position
+        self._parse_direction(child)
       elif child.tag == 'forward':
         self._parse_forward(child)
       elif child.tag == 'note':
@@ -602,7 +605,6 @@ class Measure(object):
 
   def _parse_direction(self, xml_direction):
     """Parse the MusicXML <direction> element."""
-    # 수정 필요
     for child in xml_direction:
       #print(child)
       if child.tag == 'sound':
@@ -1429,5 +1431,4 @@ class Direction(object):
 
   def _parse_words(self, xml_words):
     """Parse the MusicXML <words> element."""
-    print(xml_words.text)
     self.words = xml_words.text
