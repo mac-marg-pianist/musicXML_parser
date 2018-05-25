@@ -508,8 +508,8 @@ class Measure(object):
     self.tempos = []
     self.time_signature = None
     self.key_signature = None
-    self.barline = None
-    self.repeat = None        # 'start' or 'stop' or None
+    self.barline = None            # 'double' or 'final' or None
+    self.repeat = None             # 'start' or 'stop' or None
     # Cumulative duration in MusicXML duration.
     # Used for time signature calculations
     self.duration = 0
@@ -554,7 +554,6 @@ class Measure(object):
         # Sum up the MusicXML durations in voice 1 of this measure
         if note.voice == 1 and not note.is_in_chord:
           self.duration += note.note_duration.duration
-
       else:
         # Ignore other tag types because they are not relevant.
         pass
