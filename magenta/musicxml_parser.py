@@ -508,6 +508,8 @@ class Measure(object):
     self.tempos = []
     self.time_signature = None
     self.key_signature = None
+    self.barline = None            # 'double' or 'final' or None
+    self.repeat = None             # 'start' or 'stop' or None
     # Cumulative duration in MusicXML duration.
     # Used for time signature calculations
     self.duration = 0
@@ -528,6 +530,8 @@ class Measure(object):
         self._parse_attributes(child)
       elif child.tag == 'backup':
         self._parse_backup(child)
+      elif child.tag == 'barline':
+        self._parse_barline(child)
       elif child.tag == 'direction':
         # Append new direction
         direction.append(child)
@@ -535,6 +539,9 @@ class Measure(object):
         self._parse_direction(child)
       elif child.tag == 'forward':
         self._parse_forward(child)
+      elif child.tag == 'harmony':
+        chord_symbol = ChordSymbol(child, self.state)
+        self.chord_symbols.append(chord_symbol)
       elif child.tag == 'note':
         # Add direction if find note 
         note = Note(child, direction, self.state)
@@ -546,14 +553,30 @@ class Measure(object):
         # Sum up the MusicXML durations in voice 1 of this measure
         if note.voice == 1 and not note.is_in_chord:
           self.duration += note.note_duration.duration
-      elif child.tag == 'harmony':
-        chord_symbol = ChordSymbol(child, self.state)
-        self.chord_symbols.append(chord_symbol)
-
       else:
-        # Ignore other tag types because they are not relevant to Magenta.
+        # Ignore other tag types because they are not relevant.
         pass
 
+  def _parse_barline(self, xml_barline):
+    """Parse the MusicXML <barline> element.
+
+    Args:
+      xml_barline: XML element with tag type 'barline'.
+    """
+    style = xml_barline.find('bar-style').text
+    repeat = xml_barline.find('repeat')
+
+    if style == 'light-light':
+      self.barline = 'double'
+    elif style == 'light-heavy':
+      self.barline = 'final'
+    elif repeat is not None:
+      attrib = repeat.attrib['direction']
+      if attrib == 'forward':
+        self.repeat = 'start'
+      elif attrib == 'backword':
+        self.repeat = 'end'
+    
   def _parse_attributes(self, xml_attributes):
     """Parse the MusicXML <attributes> element."""
 
@@ -582,6 +605,8 @@ class Measure(object):
           if new_key > 6:
             new_key %= -6
           self.key_signature.key = new_key
+
+        
       else:
         # Ignore other tag types because they are not relevant to Magenta.
         pass
@@ -606,7 +631,6 @@ class Measure(object):
   def _parse_direction(self, xml_direction):
     """Parse the MusicXML <direction> element."""
     for child in xml_direction:
-      #print(child)
       if child.tag == 'sound':
         if child.get('tempo') is not None:
           tempo = Tempo(self.state, child)
@@ -615,10 +639,6 @@ class Measure(object):
           self.state.seconds_per_quarter = 60 / self.state.qpm
           if child.get('dynamics') is not None:
             self.state.velocity = int(child.get('dynamics'))
-
-      #if child.tag == 'direction-type':
-        #dynamics = child.tag('dynamics').text
-        #print('ff')
 
   def _parse_forward(self, xml_forward):
     """Parse the MusicXML <forward> element.
@@ -1403,12 +1423,21 @@ class Direction(object):
           self._parse_words(child)
 
   def _parse_pedal(self, xml_pedal):
-    """Parse the MusicXML <pedal> element."""
+    """Parse the MusicXML <pedal> element.
+    
+    Args:
+      xml_pedal: XML element with tag type 'pedal'.
+    """
+
     pedal = xml_pedal.attrib
     self.pedal = pedal
 
   def _parse_sound(self, xml_direction):
-    """Parse the MusicXML <sound> element."""
+    """Parse the MusicXML <sound> element.
+    
+    Args:
+      xml_direction: XML element with tag type 'direction'.
+    """
     sound_tag = xml_direction.find('sound')
     if sound_tag is not None:
       attrib = sound_tag.attrib
@@ -1418,17 +1447,28 @@ class Direction(object):
         self.tempo = attrib['tempo']
 
   def _parse_dynamics(self, xml_dynamics):
-    """Parse the MusicXML <dynamics> element."""
+    """Parse the MusicXML <dynamics> element.
+
+    Args:
+      xml_dynamics: XML element with tag type 'dynamics'.
+    """
     dynamic = xml_dynamics.getchildren()[0].tag
     self.dynamic = dynamic
 
   def _parse_wedge(self, xml_wedge):
-    """Parse the MusicXML <wedge> element."""
-    wedge = xml_wedge.attrib
-    self.wedge = wedge
+    """Parse the MusicXML <wedge> element.
+    
+    Args:
+      xml_wedge: XML element with tag type 'wedge'.
+    """
+    self.wedge = xml_wedge.attrib
 
   def _parse_words(self, xml_words):
-    """Parse the MusicXML <words> element."""
+    """Parse the MusicXML <words> element.
+    
+    Args:
+      xml_wedge: XML element with tag type 'wedge'.
+    """
     self.words = xml_words.text
 
 
@@ -1475,9 +1515,13 @@ class Notations(object):
         elif child.tag == 'tied':
           self.tied = child.attrib['type']
 
-  def _parse_articulations(self, child):
-    """Parse the MusicXML <Articulations> element."""
-    tag = child.getchildren()[0].tag
+  def _parse_articulations(self, xml_articulation):
+    """Parse the MusicXML <Articulations> element.
+
+    Args:
+      xml_articulation: XML element with tag type 'articulation'.
+    """
+    tag = xml_articulation.getchildren()[0].tag
     if tag == 'accent':
       self.arpeggiate = True
     elif tag == 'arpeggiate':
