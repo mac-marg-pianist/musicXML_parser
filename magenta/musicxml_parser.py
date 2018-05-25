@@ -531,7 +531,6 @@ class Measure(object):
       elif child.tag == 'backup':
         self._parse_backup(child)
       elif child.tag == 'barline':
-        # Get text in <bar-style /> and update barline
         self._parse_barline(child)
       elif child.tag == 'direction':
         # Append new direction
@@ -559,7 +558,7 @@ class Measure(object):
         pass
 
   def _parse_barline(self, xml_barline):
-    """Parse the MusicXML <bar-style> element.
+    """Parse the MusicXML <barline> element.
 
     Args:
       xml_barline: XML element with tag type 'barline'.
