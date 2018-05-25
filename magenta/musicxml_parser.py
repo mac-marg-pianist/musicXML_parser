@@ -704,7 +704,6 @@ class Measure(object):
 
 class Note(object):
   """Internal representation of a MusicXML <note> element."""
-     #   note = Note(child, directions, self.state)
 
   def __init__(self, xml_note, direction, state):
     self.xml_note = xml_note
@@ -716,6 +715,7 @@ class Note(object):
     self.note_duration = NoteDuration(state)
     self.state = state
     self.direction = Direction(direction)
+    self.notations = Notations()
     self._parse()
 
   def _parse(self):
@@ -729,8 +729,7 @@ class Note(object):
       if child.tag == 'chord':
         self.is_in_chord = True
       elif child.tag == 'duration':
-        self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note,
-                                          child.text)
+        self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note, child.text)
       elif child.tag == 'pitch':
         self._parse_pitch(child)
       elif child.tag == 'rest':
@@ -744,6 +743,8 @@ class Note(object):
       elif child.tag == 'time-modification':
         # A time-modification element represents a tuplet_ratio
         self._parse_tuplet(child)
+      elif child.tag == 'notations':
+        self.notations = Notations(child)
       elif child.tag == 'unpitched':
         raise UnpitchedNoteException('Unpitched notes are not supported')
       else:
@@ -1387,22 +1388,19 @@ class Direction(object):
 
   def _parse(self):
     """Parse the MusicXML <direction> element."""
-    DIRECTION_TAG = ['dynamics',' pedal', 'wedge', 'words']
-
     for direction in self.xml_direction:
       self._parse_sound(direction)
       direction_type = direction.find('direction-type')
-      for tag in DIRECTION_TAG:
-        child = direction_type.find(tag)
-        if child is not None:
-          if child.tag == "dynamics":
-            self._parse_dynamics(child)
-          if child.tag == "pedal":
-            self._parse_pedal(child)
-          if child.tag == "wedge":
-            self._parse_wedge(child)
-          if child.tag == "words":
-            self._parse_words(child)
+      child = direction_type.getchildren()[0]
+      if child is not None:
+        if child.tag == "dynamics":
+          self._parse_dynamics(child)
+        if child.tag == "pedal":
+          self._parse_pedal(child)
+        if child.tag == "wedge":
+          self._parse_wedge(child)
+        if child.tag == "words":
+          self._parse_words(child)
 
   def _parse_pedal(self, xml_pedal):
     """Parse the MusicXML <pedal> element."""
