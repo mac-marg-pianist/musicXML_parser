@@ -508,6 +508,8 @@ class Measure(object):
     self.tempos = []
     self.time_signature = None
     self.key_signature = None
+    self.barline = None
+    self.repeat = None        # 'start' or 'stop' or None
     # Cumulative duration in MusicXML duration.
     # Used for time signature calculations
     self.duration = 0
@@ -528,6 +530,9 @@ class Measure(object):
         self._parse_attributes(child)
       elif child.tag == 'backup':
         self._parse_backup(child)
+      elif child.tag == 'barline':
+        # Get text in <bar-style /> and update barline
+        self._parse_barline(child)
       elif child.tag == 'direction':
         # Append new direction
         direction.append(child)
@@ -554,6 +559,26 @@ class Measure(object):
         # Ignore other tag types because they are not relevant.
         pass
 
+  def _parse_barline(self, xml_barline):
+    """Parse the MusicXML <bar-style> element.
+
+    Args:
+      xml_barline: XML element with tag type 'barline'.
+    """
+    style = xml_barline.find('bar-style').text
+    repeat = xml_barline.find('repeat')
+
+    if style == 'light-light':
+      self.barline = 'double'
+    elif style == 'light-heavy':
+      self.barline = 'final'
+    elif repeat is not None:
+      attrib = repeat.attrib['direction']
+      if attrib == 'forward':
+        self.repeat = 'start'
+      elif attrib == 'backword':
+        self.repeat = 'end'
+    
   def _parse_attributes(self, xml_attributes):
     """Parse the MusicXML <attributes> element."""
 
