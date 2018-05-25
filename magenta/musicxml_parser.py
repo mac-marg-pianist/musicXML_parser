@@ -704,7 +704,6 @@ class Measure(object):
 
 class Note(object):
   """Internal representation of a MusicXML <note> element."""
-     #   note = Note(child, directions, self.state)
 
   def __init__(self, xml_note, direction, state):
     self.xml_note = xml_note
@@ -716,6 +715,7 @@ class Note(object):
     self.note_duration = NoteDuration(state)
     self.state = state
     self.direction = Direction(direction)
+    self.notations = Notations()
     self._parse()
 
   def _parse(self):
@@ -729,8 +729,7 @@ class Note(object):
       if child.tag == 'chord':
         self.is_in_chord = True
       elif child.tag == 'duration':
-        self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note,
-                                          child.text)
+        self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note, child.text)
       elif child.tag == 'pitch':
         self._parse_pitch(child)
       elif child.tag == 'rest':
@@ -744,6 +743,8 @@ class Note(object):
       elif child.tag == 'time-modification':
         # A time-modification element represents a tuplet_ratio
         self._parse_tuplet(child)
+      elif child.tag == 'notations':
+        self.notations = Notations(child)
       elif child.tag == 'unpitched':
         raise UnpitchedNoteException('Unpitched notes are not supported')
       else:
@@ -1387,27 +1388,24 @@ class Direction(object):
 
   def _parse(self):
     """Parse the MusicXML <direction> element."""
-    DIRECTION_TAG = ['dynamics',' pedal', 'wedge', 'words']
-
     for direction in self.xml_direction:
       self._parse_sound(direction)
       direction_type = direction.find('direction-type')
-      for tag in DIRECTION_TAG:
-        child = direction_type.find(tag)
-        if child is not None:
-          if child.tag == "dynamics":
-            self._parse_dynamics(child)
-          if child.tag == "pedal":
-            self._parse_pedal(child)
-          if child.tag == "wedge":
-            self._parse_wedge(child)
-          if child.tag == "words":
-            self._parse_words(child)
+      child = direction_type.getchildren()[0]
+      if child is not None:
+        if child.tag == "dynamics":
+          self._parse_dynamics(child)
+        elif child.tag == "pedal":
+          self._parse_pedal(child)
+        elif child.tag == "wedge":
+          self._parse_wedge(child)
+        elif child.tag == "words":
+          self._parse_words(child)
 
   def _parse_pedal(self, xml_pedal):
     """Parse the MusicXML <pedal> element."""
     pedal = xml_pedal.attrib
-    self.pedal = pedal,
+    self.pedal = pedal
 
   def _parse_sound(self, xml_direction):
     """Parse the MusicXML <sound> element."""
@@ -1432,3 +1430,67 @@ class Direction(object):
   def _parse_words(self, xml_words):
     """Parse the MusicXML <words> element."""
     self.words = xml_words.text
+
+
+class Notations(object):
+  """Internal representation of a MusicXML Note's Notations properties.
+  
+  This represents musical notations symbols, articulationsNo with ten components:
+
+  1) accent
+  2) arpeggiate
+  3) fermata
+  4) mordent
+  5) staccato
+  6) tenuto
+  7) tie
+  8) tied
+  9) trill
+  10) tuplet
+
+  """
+  def __init__(self, xml_notations=None):
+    self.xml_notations = xml_notations
+    self.accent = False             
+    self.arpeggiate = False        
+    self.fermata = False            
+    self.mordent = False            
+    self.staccato = False           
+    self.tenuto = False            
+    self.tie = None                 # 'start' or 'stop' or None
+    self.tied = None                # 'start' or 'stop' or None
+    self.trill = False          
+    self.tuplet = False
+    self._parse()
+
+  def _parse(self):
+    """Parse the MusicXML <Notations> element."""
+    if self.xml_notations is not None:
+      notations = self.xml_notations.getchildren()
+      for child in notations:    
+        if child.tag == "articulations":
+          self._parse_articulations(child)
+        if child.tag == 'tie':
+          self.tie = child.attrib['type']
+        if child.tag == 'tied':
+          self.tied = child.attrib['type']
+
+  def _parse_articulations(self, child):
+    """Parse the MusicXML <Articulations> element."""
+    tag = child.getchildren()[0].tag
+    if tag == 'accent':
+      self.arpeggiate = True
+    elif tag == 'arpeggiate':
+      self.accent = True
+    elif tag == 'fermata':
+      self.fermata = True
+    elif tag == 'mordent':
+      self.mordent = True
+    elif tag == 'staccato':
+      self.staccato = True
+    elif tag == 'tenuto':
+      self.tenuto = True
+    elif tag == 'trill-mark':
+      self.trill = True
+    elif tag == 'tuplet':
+      self.tuplet = True
