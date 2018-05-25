@@ -1468,11 +1468,11 @@ class Notations(object):
     if self.xml_notations is not None:
       notations = self.xml_notations.getchildren()
       for child in notations:    
-        if child.tag == "articulations":
+        if child.tag == 'articulations':
           self._parse_articulations(child)
-        if child.tag == 'tie':
+        elif child.tag == 'tie':
           self.tie = child.attrib['type']
-        if child.tag == 'tied':
+        elif child.tag == 'tied':
           self.tied = child.attrib['type']
 
   def _parse_articulations(self, child):
