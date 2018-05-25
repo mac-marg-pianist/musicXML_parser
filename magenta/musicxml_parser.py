@@ -1435,7 +1435,7 @@ class Direction(object):
 class Notations(object):
   """Internal representation of a MusicXML Note's Notations properties.
   
-  This represents musical notations symbols, articulations with ten components:
+  This represents musical notations symbols, articulationsNo with ten components:
 
   1) accent
   2) arpeggiate
@@ -1457,8 +1457,8 @@ class Notations(object):
     self.mordent = False            
     self.staccato = False           
     self.tenuto = False            
-    self.tie = None                 # start or stop or None
-    self.tied = None                # start or stop or None
+    self.tie = None                 # 'start' or 'stop' or None
+    self.tied = None                # 'start' or 'stop' or None
     self.trill = False          
     self.tuplet = False
     self._parse()
@@ -1478,19 +1478,19 @@ class Notations(object):
   def _parse_articulations(self, child):
     """Parse the MusicXML <Articulations> element."""
     tag = child.getchildren()[0].tag
-    if tag == "accent":
+    if tag == 'accent':
       self.arpeggiate = True
-    elif tag == "arpeggiate":
+    elif tag == 'arpeggiate':
       self.accent = True
-    elif tag == "fermata":
+    elif tag == 'fermata':
       self.fermata = True
-    elif tag == "mordent":
+    elif tag == 'mordent':
       self.mordent = True
-    elif tag == "staccato":
+    elif tag == 'staccato':
       self.staccato = True
-    elif tag == "tenuto":
+    elif tag == 'tenuto':
       self.tenuto = True
-    elif tag == "trill-mark":
+    elif tag == 'trill-mark':
       self.trill = True
-    elif tag == "tuplet":
+    elif tag == 'tuplet':
       self.tuplet = True
