@@ -1435,7 +1435,7 @@ class Direction(object):
 class Notations(object):
   """Internal representation of a MusicXML Note's Notations properties.
   
-  This represents musical notations symbols, expressions with six components:
+  This represents musical notations symbols, articulations with ten components:
 
   1) accent
   2) arpeggiate
