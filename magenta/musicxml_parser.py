@@ -1514,6 +1514,8 @@ class Notations(object):
           self.tie = child.attrib['type']
         elif child.tag == 'tied':
           self.tied = child.attrib['type']
+        elif child.tag == 'ornaments':
+          self._parse_ornaments(child)
 
   def _parse_articulations(self, xml_articulation):
     """Parse the MusicXML <Articulations> element.
@@ -1528,13 +1530,16 @@ class Notations(object):
       self.is_accent = True
     elif tag == 'fermata':
       self.is_fermata = True
-    elif tag == 'mordent':
-      self.is_mordent = True
     elif tag == 'staccato':
       self.is_staccato = True
     elif tag == 'tenuto':
       self.is_tenuto = True
-    elif tag == 'trill-mark':
-      self.is_trill = True
     elif tag == 'tuplet':
       self.is_tuplet = True
+  
+  def _parse_ornaments(self, xml_ornaments):
+    tag = xml_ornaments.getchildren()[0].tag
+    if tag == 'trill-mark':
+      self.is_trill = True
+    if tag == 'inverted-mordent' or tag == 'mordent':
+      self.is_mordent = True
