@@ -1390,9 +1390,9 @@ class Direction(object):
   1) dynamic
   2) tempo
   3) pedal
-  4) wedge
-  5) words
-  6) velocity
+  4) wedge                 # crescendo or diminuendo or None
+  5) words                 # string
+  6) velocity              # integer
 
   It parses the standard of the marking point of note.
   """
@@ -1418,7 +1418,7 @@ class Direction(object):
         elif child.tag == "pedal":
           self._parse_pedal(child)
         elif child.tag == "wedge":
-          self._parse_wedge(child)
+          self._parse_wedge(child) 
         elif child.tag == "words":
           self._parse_words(child)
 
@@ -1461,7 +1461,7 @@ class Direction(object):
     Args:
       xml_wedge: XML element with tag type 'wedge'.
     """
-    self.wedge = xml_wedge.attrib
+    self.wedge = xml_wedge.attrib['type']
 
   def _parse_words(self, xml_words):
     """Parse the MusicXML <words> element.
