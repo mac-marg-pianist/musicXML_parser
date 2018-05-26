@@ -730,12 +730,14 @@ class Note(object):
     self.voice = 1
     self.is_rest = False
     self.is_in_chord = False
-    self.is_grace_note = False
+    # Note.is_grace_note is use to calculate NoteDuration of grace note.
+    # Therefore, use NoteDuration.is_grace_note.
+    self.is_grace_note = False      
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
     self.state = state
     self.direction = Direction(direction)
-    self.notations = Notations()
+    self.note_notation = Notations()
     self._parse()
 
   def _parse(self):
@@ -888,7 +890,6 @@ class NoteDuration(object):
   def parse_duration(self, is_in_chord, is_grace_note, duration):
     """Parse the duration of a note and compute timings."""
     self.duration = int(duration)
-
     # Due to an error in Sibelius' export, force this note to have the
     # duration of the previous note if it is in a chord
     if is_in_chord:
@@ -960,9 +961,8 @@ class NoteDuration(object):
 
     # If the note is a grace note, force its ratio to be 0
     # because it does not have a <duration> tag
-    if self.is_grace_note:
+    if self.is_grace_note:  
       duration_ratio = Fraction(0, 1)
-
     return duration_ratio
 
   def duration_float(self):
@@ -1491,16 +1491,16 @@ class Notations(object):
   """
   def __init__(self, xml_notations=None):
     self.xml_notations = xml_notations
-    self.accent = False             
-    self.arpeggiate = False        
-    self.fermata = False            
-    self.mordent = False            
-    self.staccato = False           
-    self.tenuto = False            
+    self.is_accent = False             
+    self.is_arpeggiate = False        
+    self.is_fermata = False            
+    self.is_mordent = False            
+    self.is_staccato = False           
+    self.is_tenuto = False            
     self.tie = None                 # 'start' or 'stop' or None
     self.tied = None                # 'start' or 'stop' or None
-    self.trill = False          
-    self.tuplet = False
+    self.is_trill = False          
+    self.is_tuplet = False
     self._parse()
 
   def _parse(self):
@@ -1523,18 +1523,18 @@ class Notations(object):
     """
     tag = xml_articulation.getchildren()[0].tag
     if tag == 'accent':
-      self.arpeggiate = True
+      self.is_arpeggiate = True
     elif tag == 'arpeggiate':
-      self.accent = True
+      self.is_accent = True
     elif tag == 'fermata':
-      self.fermata = True
+      self.is_fermata = True
     elif tag == 'mordent':
-      self.mordent = True
+      self.is_mordent = True
     elif tag == 'staccato':
-      self.staccato = True
+      self.is_staccato = True
     elif tag == 'tenuto':
-      self.tenuto = True
+      self.is_tenuto = True
     elif tag == 'trill-mark':
-      self.trill = True
+      self.is_trill = True
     elif tag == 'tuplet':
-      self.tuplet = True
+      self.is_tuplet = True
