@@ -737,7 +737,7 @@ class Note(object):
     self.note_duration = NoteDuration(state)
     self.state = state
     self.direction = Direction(direction)
-    self.note_notation = Notations()
+    self.note_notations = Notations()
     self._parse()
 
   def _parse(self):
@@ -766,7 +766,7 @@ class Note(object):
         # A time-modification element represents a tuplet_ratio
         self._parse_tuplet(child)
       elif child.tag == 'notations':
-        self.notations = Notations(child)
+        self.note_notations.parse_notations(child)
       elif child.tag == 'unpitched':
         raise UnpitchedNoteException('Unpitched notes are not supported')
       else:
@@ -1501,10 +1501,10 @@ class Notations(object):
     self.tied = None                # 'start' or 'stop' or None
     self.is_trill = False          
     self.is_tuplet = False
-    self._parse()
 
-  def _parse(self):
+  def parse_notations(self, xml_notations):
     """Parse the MusicXML <Notations> element."""
+    self.xml_notations = xml_notations
     if self.xml_notations is not None:
       notations = self.xml_notations.getchildren()
       for child in notations:    
@@ -1538,6 +1538,11 @@ class Notations(object):
       self.is_tuplet = True
   
   def _parse_ornaments(self, xml_ornaments):
+    """Parse the MusicXML <ornaments> element.
+
+    Args:
+      xml_ornaments: XML element with tag type 'ornaments'.
+    """
     tag = xml_ornaments.getchildren()[0].tag
     if tag == 'trill-mark':
       self.is_trill = True
