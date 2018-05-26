@@ -1387,20 +1387,20 @@ class Direction(object):
   """Internal representation of a MusicXML Measure's Direction properties.
   
   This represents musical dynamic symbols, expressions with six components:
-  1) dynamic
-  2) tempo
-  3) pedal
-  4) wedge                 # crescendo or diminuendo or None
-  5) words                 # string
+  1) dynamic               # 'ppp', 'pp', 'p', 'mp' 'mf', 'f', 'ff' 'fff
+  2) pedal                 # 'start' or 'stop' or 'change' 'continue' or None
+  2) tempo                 # integer
+  4) wedge                 # 'crescendo' or 'diminuendo' or 'stop' None
+  5) words                 # string e.g)  Andantino
   6) velocity              # integer
 
   It parses the standard of the marking point of note.
   """
   def __init__(self, xml_direction=None):
     self.xml_direction = xml_direction
-    self.dynamic = None  
-    self.tempo = None
+    self.dynamic = None
     self.pedal = None 
+    self.tempo = None
     self.wedge = None
     self.words = None
     self.velocity = None
@@ -1428,8 +1428,7 @@ class Direction(object):
     Args:
       xml_pedal: XML element with tag type 'pedal'.
     """
-
-    pedal = xml_pedal.attrib
+    pedal = xml_pedal.attrib['type']
     self.pedal = pedal
 
   def _parse_sound(self, xml_direction):
@@ -1524,9 +1523,9 @@ class Notations(object):
       xml_articulation: XML element with tag type 'articulation'.
     """
     tag = xml_articulation.getchildren()[0].tag
-    if tag == 'accent':
+    if tag == 'arpeggiate':
       self.is_arpeggiate = True
-    elif tag == 'arpeggiate':
+    elif tag == 'accent':
       self.is_accent = True
     elif tag == 'fermata':
       self.is_fermata = True
