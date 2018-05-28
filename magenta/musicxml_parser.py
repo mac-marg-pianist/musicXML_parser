@@ -736,7 +736,7 @@ class Note(object):
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
     self.state = state
-    self.direction = Direction(direction)
+    self.note_direction = Direction(direction)
     self.note_notations = Notations()
     self._parse()
 
@@ -1390,7 +1390,7 @@ class Direction(object):
   1) dynamic               # 'ppp', 'pp', 'p', 'mp' 'mf', 'f', 'ff' 'fff
   2) pedal                 # 'start' or 'stop' or 'change' 'continue' or None
   2) tempo                 # integer
-  4) wedge                 # 'crescendo' or 'diminuendo' or 'stop' None
+  4) wedge                 # 'crescendo' or 'diminuendo' or 'stop' or None
   5) words                 # string e.g)  Andantino
   6) velocity              # integer
 
