@@ -736,7 +736,7 @@ class Note(object):
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
     self.state = state
-    self.note_direction = Direction(direction)
+    self.direction = Direction(direction, self.state)
     self.note_notations = Notations()
     self._parse()
 
@@ -1396,18 +1396,22 @@ class Direction(object):
 
   It parses the standard of the marking point of note.
   """
-  def __init__(self, xml_direction=None):
+  def __init__(self, xml_direction, state):
     self.xml_direction = xml_direction
     self.dynamic = None
     self.pedal = None 
     self.tempo = None
-    self.wedge = None
+    self.wedge_type = None
+    self.wedge_status = None
     self.words = None
     self.velocity = None
+    self.state = state
     self._parse()
+    self._update_wedge()
 
   def _parse(self):
     """Parse the MusicXML <direction> element."""
+
     for direction in self.xml_direction:
       self._parse_sound(direction)
       direction_type = direction.find('direction-type')
@@ -1421,7 +1425,7 @@ class Direction(object):
           self._parse_wedge(child) 
         elif child.tag == "words":
           self._parse_words(child)
-
+  
   def _parse_pedal(self, xml_pedal):
     """Parse the MusicXML <pedal> element.
     
@@ -1460,7 +1464,17 @@ class Direction(object):
     Args:
       xml_wedge: XML element with tag type 'wedge'.
     """
-    self.wedge = xml_wedge.attrib['type']
+    wedge_type_labels = ['crescendo', 'diminuendo']
+    wedge_status_labels = ['start', 'stop', 'continue']
+    wedge_type = xml_wedge.attrib['type']
+
+    if wedge_type in wedge_type_labels:
+      self.wedge_type = wedge_type
+      self.wedge_status = 'start'
+    elif wedge_type in wedge_status_labels:
+      self.wedge_status = wedge_type
+
+    
 
   def _parse_words(self, xml_words):
     """Parse the MusicXML <words> element.
@@ -1470,6 +1484,25 @@ class Direction(object):
     """
     self.words = xml_words.text
 
+  def _update_wedge(self):
+    # Some MusicXML doesn't have common two voice's wedge value.
+    if self.state.previous_note:
+      previous_type = self.state.previous_note.direction.wedge_type
+      previous_status = self.state.previous_note.direction.wedge_status
+      
+      # Add continue label
+      if previous_status == 'start':
+        self.wedge_status = 'continue'
+        self.wedge_type = previous_type
+
+      # Add continue label
+      if previous_status == 'continue':
+        if self.wedge_status != 'stop':
+          self.wedge_status = 'continue'
+          self.wedge_type = previous_type
+
+      if self.wedge_status == 'stop':
+        self.wedge_type = previous_type
 
 class Notations(object):
   """Internal representation of a MusicXML Note's Notations properties.
