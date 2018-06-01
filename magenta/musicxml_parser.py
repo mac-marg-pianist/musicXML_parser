@@ -781,7 +781,7 @@ class Note(object):
     if xml_pitch.find('alter') is not None:
       alter_text = xml_pitch.find('alter').text
     octave = xml_pitch.find('octave').text
- 
+
     # Parse alter string to a float (floats represent microtonal alterations)
     if alter_text:
       alter = float(alter_text)
@@ -806,6 +806,7 @@ class Note(object):
 
     # N.B. - pitch_string does not account for transposition
     pitch_string = step + alter_string + octave
+    
     # Compute MIDI pitch number (C4 = 60, C1 = 24, C0 = 12)
     midi_pitch = self.pitch_to_midi_pitch(step, alter, octave)
     # Transpose MIDI pitch
@@ -901,7 +902,7 @@ class NoteDuration(object):
     self.seconds = (self.midi_ticks / magenta.constants.STANDARD_PPQ)
     self.seconds *= self.state.seconds_per_quarter
 
-    self.time_position = self.state.time_position
+    self.time_position = float("{0:.8f}".format(self.state.time_position))
 
     # Not sure how to handle durations of grace notes yet as they
     # steal time from subsequent notes and they do not have a
@@ -1467,12 +1468,15 @@ class Direction(object):
     wedge_type_labels = ['crescendo', 'diminuendo']
     wedge_status_labels = ['start', 'stop', 'continue']
     wedge_type = xml_wedge.attrib['type']
-
+    #print(wedge_type)
     if wedge_type in wedge_type_labels:
+      # Add "start" at the point of a wedge starting point
       self.wedge_type = wedge_type
       self.wedge_status = 'start'
     elif wedge_type in wedge_status_labels:
+      #self.wedge_type = wedge_type
       self.wedge_status = wedge_type
+    #print(self.wedge_type, self.wedge_status, )
 
     
 
@@ -1490,7 +1494,7 @@ class Direction(object):
       previous_type = self.state.previous_note.direction.wedge_type
       previous_status = self.state.previous_note.direction.wedge_status
       
-      # Add continue label
+    #   # Add continue label
       if previous_status == 'start':
         self.wedge_status = 'continue'
         self.wedge_type = previous_type
@@ -1503,6 +1507,8 @@ class Direction(object):
 
       if self.wedge_status == 'stop':
         self.wedge_type = previous_type
+        
+    pass
 
 class Notations(object):
   """Internal representation of a MusicXML Note's Notations properties.
