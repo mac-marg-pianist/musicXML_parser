@@ -1,4 +1,4 @@
-# Updated 2018.05.29
+# Updated 2018.06.01
 
 import itertools
 from operator import itemgetter
@@ -7,25 +7,38 @@ from itertools import chain
 
 class OnsetState(object):
   def __init__(self):
-    self.state = None
+    self.current_onset = None
+    self.previous_onset = None
+    self.previous_wedge = None
+    self.current_wedge = None
 
-class Onset(object):
-  
+  def update_current_onset(self, onset):
+    self.current_onset = onset
+
+  def update_previous_onset(self, onset):
+    self.previous_onset = onset
+
+  def update_previous_wedge(self, wedge):
+    self.previous_wedge = wedge
+ 
+  def update_current_wedge(self, onset):
+    self.current_wedge = onset
+
+class Onset(OnsetState):
   def __init__(self, notes, previous_notes, on_set_position, on_set_total_num):
-    self.notes = notes   
-    self.previous_notes = previous_notes    
+    OnsetState.__init__(self)
+    self.notes = notes
+    self.previous_notes = previous_notes
     self.on_set_position = on_set_position
     self.on_set_total_num = on_set_total_num
-    self.accent = None
+    self.accent =            #[0] or [1]
     self.dynamic = None      # ('string', binary [0])
     self.crescendo = None        # ([0, 0, 0] ['start', 'stop', 'continue'] )
     self.diminuendo = None        # ([0, 0, 0] ['start', 'stop', 'continue'] )
-
     self.staccato = None     # ('string', binary [0])
-    self.beat = None         # [0, 0, 0] [start_beat, middle_beat, last_beat] # 0 or 1
-    self.state = OnsetState()
+    self.beat = None  # [0, 0, 0] [start_beat, middle_beat, last_beat] # 0 or 1
     self.execute()
-    
+
   def execute(self):
     self._set_accent()
     self._set_beat()
@@ -33,8 +46,7 @@ class Onset(object):
     self._set_wedge()
     self._set_staccato()
     self._set_pedal()
-    
-  
+
   def _set_accent(self):
     accent = [x.note_notations.is_accent for x in self.notes][0]
     vector = self._change_bool_to_vector('accent', accent)
@@ -42,7 +54,7 @@ class Onset(object):
 
   def _set_beat(self):
     # start point of a measure
-    if self.on_set_position == 1: 
+    if self.on_set_position == 1:
       self.beat = [0, 0, 0]
     # middle point of a measure
     if self.on_set_position == self.on_set_total_num:
@@ -50,7 +62,7 @@ class Onset(object):
     # end point of a measure
     else:
       self.beat = [0, 0, 1]
-  
+
   def _set_dynamic(self):
     """
       check dynamic type and return binary
@@ -63,7 +75,7 @@ class Onset(object):
 
     p_group = ['ppp', 'pp', 'p', 'mp']
     f_group = ['mf', 'f', 'ff', 'fff']
-  
+
     if dynamic_type in p_group:
       vector = [0, 1]
     elif dynamic_type in f_group:
@@ -76,42 +88,51 @@ class Onset(object):
     """
       check wedge type and return binary
     """
+    if self.previous_notes is not None:
+      current_wedge = self._map_to_wedge(self.notes)
+      previous_wedge = self.previous_wedge
+     
+      if self.previous_wedge is None:
+        previous_wedge = self._map_to_wedge(self.previous_notes)
+        self.previous_wedge = previous_wedge
+
+      wedge_type = ['crescendo', 'diminuendo']
+      result = []
+
+      for type in wedge_type:
+        current_wedge_val = list(current_wedge[type].values())
+        previous_wedge_val = list(previous_wedge[type].values())
+      # 이전에 continue이지만 값이 빠져있는 경우
+      #   if previous_wedge_val[2] == 1 and current_wedge_val[2] == 0:
+      #     current_wedge_val[0] = 1
+      #     current_wedge_val[2] = 1
+        
+      # # # 이전에 start 이지만 continue 값이 빠져있는 경우
+      #   if previous_wedge_val[1] == 1 and current_wedge_val[2] == 0:
+      #     current_wedge_val[0] = 1
+      #     current_wedge_val[2] = 1
+        result.append(current_wedge_val)
+
+      self.crescendo = result[0]
+      self.diminuendo = result[1]
+      print(result)
+
+
+  def _map_to_wedge(self, notes):
     wedge = {'crescendo': {'on': 0, 'start': 0, 'continue': 0, 'stop': 0},
-    'diminuendo': {'on': 0, 'start': 0, 'continue': 0, 'stop': 0}
+      'diminuendo': {'on': 0, 'start': 0, 'continue': 0, 'stop': 0}}
 
-    }
+    all_wedge = [(x.direction.wedge_type, x.direction.wedge_status) for x in notes]
+    #print(all_wedge)
 
-    current_wedge = [(x.direction.wedge_type, x.direction.wedge_status) for x in self.notes]
-    # [('crescendo', 'stop'), ....]
-
-    if self.previous_notes:
-      # 아무런 정보가 없을 때 이전 wedge에서 가져온다. 
-      if current_wedge[0][0] == None:
-        previous_wedge = [(x.direction.wedge_type, x.direction.wedge_status) for x in self.previous_notes]
-      
-        is_stop_in_wedge = 'stop' in chain(*previous_wedge)
-
-        # stop이 아닐 경우 이전 온셋 타임의 정보를 가져온다.
-        if not(is_stop_in_wedge) and previous_wedge[0][0] != None:
-          current_wedge = previous_wedge
-          self.state.state = previous_wedge
-
-        # !해결 필요한 곳
-        # previous_wedge와 current_wedge가 모두 "None"일 경우
-        # stop이 아닐 경우 이전 온셋 타임의 정보를 가져오지 않지만 업데이트되지 않음
-
-        #print("--PREV---", previous_wedge)
-        #print("--CURRENT---",  current_wedge)
-
-    # 이 부분은 함수로 만들어야 됨 :: 리팩토링 필요.
-    is_crescendo = 'crescendo' in chain(*current_wedge)
-    is_diminuendo = 'diminuendo' in chain(*current_wedge)
+    is_crescendo = 'crescendo' in chain(*all_wedge)
+    is_diminuendo = 'diminuendo' in chain(*all_wedge)
     
     if is_crescendo:
       wedge['crescendo']['on'] = 1
-      is_start = 'start' in chain(*current_wedge)
-      is_stop = 'stop' in chain(*current_wedge)
-      is_continue = 'continue' in chain(*current_wedge)
+      is_start = 'start' in chain(*all_wedge)
+      is_stop = 'stop' in chain(*all_wedge)
+      is_continue = 'continue' in chain(*all_wedge)
 
       wedge['crescendo']['start'] = 1 if is_start == True else 0
       wedge['crescendo']['stop'] = 1 if is_stop == True else 0
@@ -119,15 +140,16 @@ class Onset(object):
 
     if is_diminuendo:
       wedge['diminuendo']['on'] = 1
-      is_start = 'start' in chain(*current_wedge)
-      is_stop = 'stop' in chain(*current_wedge)
-      is_continue = 'continue' in chain(*current_wedge)
+      is_start = 'start' in chain(*all_wedge)
+      is_stop = 'stop' in chain(*all_wedge)
+      is_continue = 'continue' in chain(*all_wedge)
 
       wedge['diminuendo']['start'] = 1 if is_start == True else 0
       wedge['diminuendo']['stop'] = 1 if is_stop == True else 0
       wedge['diminuendo']['continue'] = 1 if is_continue == True else 0
     
-    # self => 저장
+    #print(wedge.values())
+    return wedge
 
     
   def _set_staccato(self):
@@ -142,11 +164,10 @@ class Onset(object):
 
   def _change_bool_to_vector(self, property_name, bool_type: bool):
     return (bool_type, [1]) if bool_type == True else (bool_type, [0])
- 
-class Main(object):
-  def __init__(self):
-    self.previous_onset = None
 
+class Main(OnsetState):
+  def __init__(self):
+    OnsetState.__init__(self)    
     self.readXML()
 
   def readXML(self):
@@ -160,18 +181,24 @@ class Main(object):
       notes = measure.notes
       # Sort notes by time position
       sorted_notes = sorted(notes, key=lambda note: note.note_duration.time_position)
-      # Make note group list by time position 
-      note_on_set_group = [[v for v in sorted_notes if v.note_duration.time_position == k] for k, val in itertools.groupby(sorted_notes, lambda x: x.note_duration.time_position)]
 
-      total = len(note_on_set_group)
-      for index, group in enumerate(note_on_set_group):
+      print(">>> Measure", i+1)
+      note_on_set_group = {k:[v for v in sorted_notes if v.note_duration.time_position == k] 
+                            for k, val in itertools.groupby(sorted_notes, lambda x: x.note_duration.time_position)}
+      
+      #print(note_on_set_group)
+      keyList=sorted(note_on_set_group.keys())
+      total = len(keyList)
+
+      for index, (key, group) in enumerate(note_on_set_group.items()):
         if index > 0:
-          previous_note = note_on_set_group[index-1]
-          on_set = Onset(group, previous_note, index+1, total)
-
+          previous_onset = note_on_set_group[keyList[index-1]]
+          position = index+1
+          on_set = Onset(group, previous_onset, index+1, total)
         else:
-          on_set = Onset(group, None, index+1, total)
-        
+          previous_onset = self.previous_onset
+          on_set = Onset(group, previous_onset, index+1, total)
+
 Main().readXML()
 
 
