@@ -32,6 +32,7 @@ import zipfile
 
 import six
 import magenta.constants
+import copy
 
 DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
 DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)
@@ -117,6 +118,7 @@ class MusicXMLParserState(object):
     # Running total of time for the current event in seconds.
     # Resets to 0 on every part. Affected by <forward> and <backup> elements
     self.time_position = 0
+    self.xml_position = 0
 
     # Default to a MIDI velocity of 64 (mf)
     self.velocity = 64
@@ -138,7 +140,7 @@ class MusicXMLParserState(object):
     self.time_signature = None
 
 
-class MusicXMLDocument(object):
+class MusicXMLDocumentOld(object):
   """Internal representation of a MusicXML Document.
 
   Represents the top level object which holds the MusicXML document
@@ -158,6 +160,7 @@ class MusicXMLDocument(object):
     self._state = MusicXMLParserState()
     # Total time in seconds
     self.total_time_secs = 0
+    self.total_duration = 0
     self._parse()
 
   @staticmethod
@@ -278,6 +281,10 @@ class MusicXMLDocument(object):
       score_part_index += 1
       if self._state.time_position > self.total_time_secs:
         self.total_time_secs = self._state.time_position
+      if self._state.xml_position > self.total_duration:
+        self.total_duration = self._state.xml_position
+
+    self.recalculate_time_position()
 
   def get_chord_symbols(self):
     """Return a list of all the chord symbols used in this score."""
@@ -352,6 +359,7 @@ class MusicXMLDocument(object):
       # If there are no key signatures, add C major at the beginning
       key_signature = KeySignature(self._state)
       key_signature.time_position = 0
+      key_signature.xml_position = 0
       key_signatures.append(key_signature)
 
     return key_signatures
@@ -377,9 +385,35 @@ class MusicXMLDocument(object):
       tempo = Tempo(self._state)
       tempo.qpm = self._state.qpm
       tempo.time_position = 0
+      tempo.xml_position = 0
       tempos.append(tempo)
-
     return tempos
+
+  def recalculate_time_position(self):
+    tempos = self.get_tempos()
+
+    tempos.sort(key=lambda x: x.xml_position)
+    new_time_position =0
+    for i in range(len(tempos)):
+      tempos[i].new_time_position = new_time_position
+      if i +1 < len(tempos):
+        new_time_position +=  (tempos[i+1].xml_position - tempos[i].xml_position) / tempos[i].qpm
+
+    for part in self.parts:
+      for measure in part.measures:
+        print(measure.start_xml_position)
+        for note in measure.notes:
+          for i in range(len(tempos)):
+            if i + 1 == len(tempos):
+              current_tempo = tempos[i].qpm
+              break
+            else:
+              if tempos[i].xml_position <= note.note_duration.xml_position and tempos[i+1].xml_position > note.note_duration.xml_position:
+                current_tempo = tempos[i].qpm
+                break
+          note.note_duration.time_position = tempos[i].new_time_position + (note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
+
+
 
 
 class ScorePart(object):
@@ -449,6 +483,7 @@ class Part(object):
 
     # Reset the time position when parsing each part
     self._state.time_position = 0
+    self._state.xml_position = 0
     self._state.midi_channel = self.score_part.midi_channel
     self._state.midi_program = self.score_part.midi_program
     self._state.transpose = 0
@@ -508,8 +543,6 @@ class Measure(object):
     self.tempos = []
     self.time_signature = None
     self.key_signature = None
-    self.barline = None            # 'double' or 'final' or None
-    self.repeat = None             # 'start' or 'stop' or None
     # Cumulative duration in MusicXML duration.
     # Used for time signature calculations
     self.duration = 0
@@ -517,66 +550,40 @@ class Measure(object):
     # Record the starting time of this measure so that time signatures
     # can be inserted at the beginning of the measure
     self.start_time_position = self.state.time_position
+    self.start_xml_position = self.state.xml_position
     self._parse()
     # Update the time signature if a partial or pickup measure
     self._fix_time_signature()
 
   def _parse(self):
     """Parse the <measure> element."""
-    # Create new direction
-    direction = []
+
     for child in self.xml_measure:
       if child.tag == 'attributes':
         self._parse_attributes(child)
       elif child.tag == 'backup':
         self._parse_backup(child)
-      elif child.tag == 'barline':
-        self._parse_barline(child)
       elif child.tag == 'direction':
-        # Append new direction
-        direction.append(child)
-        # Get tempo in <sound /> and update state tempo and time_position
         self._parse_direction(child)
       elif child.tag == 'forward':
         self._parse_forward(child)
-      elif child.tag == 'harmony':
-        chord_symbol = ChordSymbol(child, self.state)
-        self.chord_symbols.append(chord_symbol)
       elif child.tag == 'note':
-        # Add direction if find note 
-        note = Note(child, direction, self.state)
+        note = Note(child, self.state)
         self.notes.append(note)
         # Keep track of current note as previous note for chord timings
         self.state.previous_note = note
-        # Make empty direction
-        direction = []
+
         # Sum up the MusicXML durations in voice 1 of this measure
         if note.voice == 1 and not note.is_in_chord:
           self.duration += note.note_duration.duration
+      elif child.tag == 'harmony':
+        chord_symbol = ChordSymbol(child, self.state)
+        self.chord_symbols.append(chord_symbol)
+
       else:
-        # Ignore other tag types because they are not relevant.
+        # Ignore other tag types because they are not relevant to Magenta.
         pass
 
-  def _parse_barline(self, xml_barline):
-    """Parse the MusicXML <barline> element.
-
-    Args:
-      xml_barline: XML element with tag type 'barline'.
-    """
-    style = xml_barline.find('bar-style').text
-    repeat = xml_barline.find('repeat')
-
-    if style == 'light-light':
-      self.barline = 'double'
-    elif style == 'light-heavy':
-      self.barline = 'final'
-    elif repeat is not None:
-      attrib = repeat.attrib['direction']
-      if attrib == 'forward':
-        self.repeat = 'start'
-      elif attrib == 'backword':
-        self.repeat = 'end'
-    
   def _parse_attributes(self, xml_attributes):
     """Parse the MusicXML <attributes> element."""
 
@@ -605,8 +612,6 @@ class Measure(object):
           if new_key > 6:
             new_key %= -6
           self.key_signature.key = new_key
-
-        
       else:
         # Ignore other tag types because they are not relevant to Magenta.
         pass
@@ -627,9 +632,11 @@ class Measure(object):
     seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position -= seconds
+    self.state.xml_position -= backup_duration
 
   def _parse_direction(self, xml_direction):
     """Parse the MusicXML <direction> element."""
+
     for child in xml_direction:
       if child.tag == 'sound':
         if child.get('tempo') is not None:
@@ -656,6 +663,7 @@ class Measure(object):
     seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position += seconds
+    self.state.xml_position += forward_duration
 
   def _fix_time_signature(self):
     """Correct the time signature for incomplete measures.
@@ -718,6 +726,7 @@ class Measure(object):
           (self.time_signature is None
            and (fractional_time_signature != fractional_state_time_signature))):
         new_time_signature.time_position = self.start_time_position
+        new_time_signature.xml_position = self.start_xml_position
         self.time_signature = new_time_signature
         self.state.time_signature = new_time_signature
 
@@ -725,19 +734,17 @@ class Measure(object):
 class Note(object):
   """Internal representation of a MusicXML <note> element."""
 
-  def __init__(self, xml_note, direction, state):
+  def __init__(self, xml_note, state):
     self.xml_note = xml_note
     self.voice = 1
     self.is_rest = False
     self.is_in_chord = False
-    # Note.is_grace_note is use to calculate NoteDuration of grace note.
-    # Therefore, use NoteDuration.is_grace_note.
-    self.is_grace_note = False      
+    self.is_grace_note = False
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
-    self.state = state
-    self.direction = Direction(direction, self.state)
-    self.note_notations = Notations()
+    # self.state = state
+    self.state = copy.copy(state)
+    self.tie = False
     self._parse()
 
   def _parse(self):
@@ -751,7 +758,8 @@ class Note(object):
       if child.tag == 'chord':
         self.is_in_chord = True
       elif child.tag == 'duration':
-        self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note, child.text)
+        self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note,
+                                          child.text)
       elif child.tag == 'pitch':
         self._parse_pitch(child)
       elif child.tag == 'rest':
@@ -765,10 +773,13 @@ class Note(object):
       elif child.tag == 'time-modification':
         # A time-modification element represents a tuplet_ratio
         self._parse_tuplet(child)
-      elif child.tag == 'notations':
-        self.note_notations.parse_notations(child)
       elif child.tag == 'unpitched':
         raise UnpitchedNoteException('Unpitched notes are not supported')
+      elif child.tag == 'tie':
+        if self.tie ==False:
+          self.tie = child.attrib['type']
+        else:
+          self.tie = 'start_stop'
       else:
         # Ignore other tag types because they are not relevant to Magenta.
         pass
@@ -806,7 +817,7 @@ class Note(object):
 
     # N.B. - pitch_string does not account for transposition
     pitch_string = step + alter_string + octave
-    
+
     # Compute MIDI pitch number (C4 = 60, C1 = 24, C0 = 12)
     midi_pitch = self.pitch_to_midi_pitch(step, alter, octave)
     # Transpose MIDI pitch
@@ -846,7 +857,8 @@ class Note(object):
     else:
       # Raise exception for unknown step (ex: 'Q')
       raise PitchStepParseException('Unable to parse pitch step ' + step)
-    pitch_class = (pitch_class + int(alter)) % 12
+
+    pitch_class = pitch_class + int(alter)
     midi_pitch = (12 + pitch_class) + (int(octave) * 12)
     return midi_pitch
 
@@ -882,6 +894,7 @@ class NoteDuration(object):
     self.midi_ticks = 0                 # Duration in MIDI ticks
     self.seconds = 0                    # Duration in seconds
     self.time_position = 0              # Onset time in seconds
+    self.xml_position = 0
     self.dots = 0                       # Number of augmentation dots
     self._type = 'quarter'              # MusicXML duration type
     self.tuplet_ratio = Fraction(1, 1)  # Ratio for tuplets (default to 1)
@@ -891,6 +904,7 @@ class NoteDuration(object):
   def parse_duration(self, is_in_chord, is_grace_note, duration):
     """Parse the duration of a note and compute timings."""
     self.duration = int(duration)
+
     # Due to an error in Sibelius' export, force this note to have the
     # duration of the previous note if it is in a chord
     if is_in_chord:
@@ -902,7 +916,8 @@ class NoteDuration(object):
     self.seconds = (self.midi_ticks / magenta.constants.STANDARD_PPQ)
     self.seconds *= self.state.seconds_per_quarter
 
-    self.time_position = float("{0:.8f}".format(self.state.time_position))
+    self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
 
     # Not sure how to handle durations of grace notes yet as they
     # steal time from subsequent notes and they do not have a
@@ -914,9 +929,11 @@ class NoteDuration(object):
       # of the previous note (i.e. all the notes in the chord will have
       # the same time position)
       self.time_position = self.state.previous_note.note_duration.time_position
+      self.xml_position = self.state.previous_note.note_duration.xml_position
     else:
       # Only increment time positions once in chord
       self.state.time_position += self.seconds
+      self.state.xml_position += self.duration
 
   def _convert_type_to_ratio(self):
     """Convert the MusicXML note-type-value to a Python Fraction.
@@ -962,8 +979,9 @@ class NoteDuration(object):
 
     # If the note is a grace note, force its ratio to be 0
     # because it does not have a <duration> tag
-    if self.is_grace_note:  
+    if self.is_grace_note:
       duration_ratio = Fraction(0, 1)
+
     return duration_ratio
 
   def duration_float(self):
@@ -1077,11 +1095,12 @@ class ChordSymbol(object):
   def __init__(self, xml_harmony, state):
     self.xml_harmony = xml_harmony
     self.time_position = -1
+    self.xml_position = -1
     self.root = None
     self.kind = ''
     self.degrees = []
     self.bass = None
-    self.state = state
+    self.state = copy.copy(state)
     self._parse()
 
   def _alter_to_string(self, alter_text):
@@ -1123,6 +1142,7 @@ class ChordSymbol(object):
   def _parse(self):
     """Parse the MusicXML <harmony> element."""
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
 
     for child in self.xml_harmony:
       if child.tag == 'root':
@@ -1150,6 +1170,7 @@ class ChordSymbol(object):
         seconds = (midi_ticks / magenta.constants.STANDARD_PPQ *
                    self.state.seconds_per_quarter)
         self.time_position += seconds
+        self.xml_position += offset
       else:
         # Ignore other tag types because they are not relevant to Magenta.
         pass
@@ -1268,7 +1289,8 @@ class TimeSignature(object):
     self.numerator = -1
     self.denominator = -1
     self.time_position = 0
-    self.state = state
+    self.xml_position = 0
+    self.state = copy.copy(state)
     if xml_time is not None:
       self._parse()
 
@@ -1289,6 +1311,7 @@ class TimeSignature(object):
       raise TimeSignatureParseException(
           'Could not parse time signature: {}/{}'.format(beats, beat_type))
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
 
   def __str__(self):
     time_sig_str = str(self.numerator) + '/' + str(self.denominator)
@@ -1316,7 +1339,8 @@ class KeySignature(object):
     # mode is "major" or "minor" only: MIDI only supports major and minor
     self.mode = 'major'
     self.time_position = -1
-    self.state = state
+    self.xml_position = -1
+    self.state = copy.copy(state)
     if xml_key is not None:
       self._parse()
 
@@ -1341,6 +1365,8 @@ class KeySignature(object):
       mode = 'major'
     self.mode = mode
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
+
 
   def __str__(self):
     keys = (['Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F', 'C', 'G', 'D',
@@ -1363,7 +1389,7 @@ class Tempo(object):
     self.xml_sound = xml_sound
     self.qpm = -1
     self.time_position = -1
-    self.state = state
+    self.state = copy.copy(state)
     if xml_sound is not None:
       self._parse()
 
@@ -1377,212 +1403,10 @@ class Tempo(object):
       # If tempo is 0, set it to default
       self.qpm = magenta.constants.DEFAULT_QUARTERS_PER_MINUTE
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
+
 
   def __str__(self):
     tempo_str = 'Tempo: ' + str(self.qpm)
     tempo_str += ' (@time: ' + str(self.time_position) + ')'
     return tempo_str
-
-
-class Direction(object):
-  """Internal representation of a MusicXML Measure's Direction properties.
-  
-  This represents musical dynamic symbols, expressions with six components:
-  1) dynamic               # 'ppp', 'pp', 'p', 'mp' 'mf', 'f', 'ff' 'fff
-  2) pedal                 # 'start' or 'stop' or 'change' 'continue' or None
-  2) tempo                 # integer
-  4) wedge                 # 'crescendo' or 'diminuendo' or 'stop' or None
-  5) words                 # string e.g)  Andantino
-  6) velocity              # integer
-
-  It parses the standard of the marking point of note.
-  """
-  def __init__(self, xml_direction, state):
-    self.xml_direction = xml_direction
-    self.dynamic = None
-    self.pedal = None 
-    self.tempo = None
-    self.wedge_type = None
-    self.wedge_status = None
-    self.words = None
-    self.velocity = None
-    self.state = state
-    self._parse()
-    self._update_wedge()
-
-  def _parse(self):
-    """Parse the MusicXML <direction> element."""
-
-    for direction in self.xml_direction:
-      self._parse_sound(direction)
-      direction_type = direction.find('direction-type')
-      child = direction_type.getchildren()[0]
-      if child is not None:
-        if child.tag == "dynamics":
-          self._parse_dynamics(child)
-        elif child.tag == "pedal":
-          self._parse_pedal(child)
-        elif child.tag == "wedge":
-          self._parse_wedge(child) 
-        elif child.tag == "words":
-          self._parse_words(child)
-  
-  def _parse_pedal(self, xml_pedal):
-    """Parse the MusicXML <pedal> element.
-    
-    Args:
-      xml_pedal: XML element with tag type 'pedal'.
-    """
-    pedal = xml_pedal.attrib['type']
-    self.pedal = pedal
-
-  def _parse_sound(self, xml_direction):
-    """Parse the MusicXML <sound> element.
-    
-    Args:
-      xml_direction: XML element with tag type 'direction'.
-    """
-    sound_tag = xml_direction.find('sound')
-    if sound_tag is not None:
-      attrib = sound_tag.attrib
-      if 'dynamics' in attrib:
-        self.velocity = attrib['dynamics']
-      elif 'tempo' in attrib:
-        self.tempo = attrib['tempo']
-
-  def _parse_dynamics(self, xml_dynamics):
-    """Parse the MusicXML <dynamics> element.
-
-    Args:
-      xml_dynamics: XML element with tag type 'dynamics'.
-    """
-    dynamic = xml_dynamics.getchildren()[0].tag
-    self.dynamic = dynamic
-
-  def _parse_wedge(self, xml_wedge):
-    """Parse the MusicXML <wedge> element.
-    
-    Args:
-      xml_wedge: XML element with tag type 'wedge'.
-    """
-    wedge_type_labels = ['crescendo', 'diminuendo']
-    wedge_status_labels = ['start', 'stop', 'continue']
-    wedge_type = xml_wedge.attrib['type']
-    #print(wedge_type)
-    if wedge_type in wedge_type_labels:
-      # Add "start" at the point of a wedge starting point
-      self.wedge_type = wedge_type
-      self.wedge_status = 'start'
-    elif wedge_type in wedge_status_labels:
-      #self.wedge_type = wedge_type
-      self.wedge_status = wedge_type
-    #print(self.wedge_type, self.wedge_status, )
-
-    
-
-  def _parse_words(self, xml_words):
-    """Parse the MusicXML <words> element.
-    
-    Args:
-      xml_wedge: XML element with tag type 'wedge'.
-    """
-    self.words = xml_words.text
-
-  def _update_wedge(self):
-    # Some MusicXML doesn't have common two voice's wedge value.
-    if self.state.previous_note:
-      previous_type = self.state.previous_note.direction.wedge_type
-      previous_status = self.state.previous_note.direction.wedge_status
-      
-    #   # Add continue label
-      if previous_status == 'start':
-        self.wedge_status = 'continue'
-        self.wedge_type = previous_type
-
-      # Add continue label
-      if previous_status == 'continue':
-        if self.wedge_status != 'stop':
-          self.wedge_status = 'continue'
-          self.wedge_type = previous_type
-
-      if self.wedge_status == 'stop':
-        self.wedge_type = previous_type
-        
-    pass
-
-class Notations(object):
-  """Internal representation of a MusicXML Note's Notations properties.
-  
-  This represents musical notations symbols, articulationsNo with ten components:
-
-  1) accent
-  2) arpeggiate
-  3) fermata
-  4) mordent
-  5) staccato
-  6) tenuto
-  7) tie
-  8) tied
-  9) trill
-  10) tuplet
-
-  """
-  def __init__(self, xml_notations=None):
-    self.xml_notations = xml_notations
-    self.is_accent = False             
-    self.is_arpeggiate = False        
-    self.is_fermata = False            
-    self.is_mordent = False            
-    self.is_staccato = False           
-    self.is_tenuto = False            
-    self.tie = None                 # 'start' or 'stop' or None
-    self.tied = None                # 'start' or 'stop' or None
-    self.is_trill = False          
-    self.is_tuplet = False
-
-  def parse_notations(self, xml_notations):
-    """Parse the MusicXML <Notations> element."""
-    self.xml_notations = xml_notations
-    if self.xml_notations is not None:
-      notations = self.xml_notations.getchildren()
-      for child in notations:    
-        if child.tag == 'articulations':
-          self._parse_articulations(child)
-        elif child.tag == 'tie':
-          self.tie = child.attrib['type']
-        elif child.tag == 'tied':
-          self.tied = child.attrib['type']
-        elif child.tag == 'ornaments':
-          self._parse_ornaments(child)
-
-  def _parse_articulations(self, xml_articulation):
-    """Parse the MusicXML <Articulations> element.
-
-    Args:
-      xml_articulation: XML element with tag type 'articulation'.
-    """
-    tag = xml_articulation.getchildren()[0].tag
-    if tag == 'arpeggiate':
-      self.is_arpeggiate = True
-    elif tag == 'accent':
-      self.is_accent = True
-    elif tag == 'fermata':
-      self.is_fermata = True
-    elif tag == 'staccato':
-      self.is_staccato = True
-    elif tag == 'tenuto':
-      self.is_tenuto = True
-    elif tag == 'tuplet':
-      self.is_tuplet = True
-  
-  def _parse_ornaments(self, xml_ornaments):
-    """Parse the MusicXML <ornaments> element.
-
-    Args:
-      xml_ornaments: XML element with tag type 'ornaments'.
-    """
-    tag = xml_ornaments.getchildren()[0].tag
-    if tag == 'trill-mark':
-      self.is_trill = True
-    if tag == 'inverted-mordent' or tag == 'mordent':
-      self.is_mordent = True

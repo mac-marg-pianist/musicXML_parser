@@ -31,7 +31,7 @@ class Onset(OnsetState):
     self.previous_notes = previous_notes
     self.on_set_position = on_set_position
     self.on_set_total_num = on_set_total_num
-    self.accent =            #[0] or [1]
+    self.accent = None            #[0] or [1]
     self.dynamic = None      # ('string', binary [0])
     self.crescendo = None        # ([0, 0, 0] ['start', 'stop', 'continue'] )
     self.diminuendo = None        # ([0, 0, 0] ['start', 'stop', 'continue'] )
@@ -159,7 +159,6 @@ class Onset(OnsetState):
 
   def _set_pedal(self):
     # 역시 같은 문제
-
     pass
 
   def _change_bool_to_vector(self, property_name, bool_type: bool):
@@ -180,24 +179,25 @@ class Main(OnsetState):
       measure =  parts.measures[i]
       notes = measure.notes
       # Sort notes by time position
-      sorted_notes = sorted(notes, key=lambda note: note.note_duration.time_position)
+      #sorted_notes = sorted(notes, key=lambda note: note.note_duration.time_position)
 
       print(">>> Measure", i+1)
-      note_on_set_group = {k:[v for v in sorted_notes if v.note_duration.time_position == k] 
-                            for k, val in itertools.groupby(sorted_notes, lambda x: x.note_duration.time_position)}
+      print([vars(x) for x in notes])
+      # note_on_set_group = {k:[v for v in sorted_notes if v.note_duration.time_position == k] 
+      #                       for k, val in itertools.groupby(sorted_notes, lambda x: x.note_duration.time_position)}
       
-      #print(note_on_set_group)
-      keyList=sorted(note_on_set_group.keys())
-      total = len(keyList)
+      # #print(note_on_set_group)
+      # keyList=sorted(note_on_set_group.keys())
+      # total = len(keyList)
 
-      for index, (key, group) in enumerate(note_on_set_group.items()):
-        if index > 0:
-          previous_onset = note_on_set_group[keyList[index-1]]
-          position = index+1
-          on_set = Onset(group, previous_onset, index+1, total)
-        else:
-          previous_onset = self.previous_onset
-          on_set = Onset(group, previous_onset, index+1, total)
+      # for index, (key, group) in enumerate(note_on_set_group.items()):
+      #   if index > 0:
+      #     previous_onset = note_on_set_group[keyList[index-1]]
+      #     position = index+1
+      #     on_set = Onset(group, previous_onset, index+1, total)
+      #   else:
+      #     previous_onset = self.previous_onset
+      #     on_set = Onset(group, previous_onset, index+1, total)
 
 Main().readXML()
 
