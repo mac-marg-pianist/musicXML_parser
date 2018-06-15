@@ -1,3 +1,5 @@
+import copy
+
 class Direction(object):
   """Internal representation of a MusicXML Measure's Direction properties.
   
@@ -20,9 +22,11 @@ class Direction(object):
     self.wedge_status = None
     self.words = None
     self.velocity = None
-    self.state = state
+    self.state = copy.copy(state)
     self._parse()
     self._update_wedge()
+    self.time_position = state.time_position
+    self.xml_position = state.xml_position
 
   def _parse(self):
     """Parse the MusicXML <direction> element."""
