@@ -122,3 +122,17 @@ def extract_notes(xml_Doc, melody_only = False):
                     notes.append(note)
 
     return notes
+
+
+def apply_grace(xml_Doc):
+    notes = extract_notes(xml_Doc)
+    for i in range(len(notes)):
+        note = notes[i]
+        if note.is_grace_note:
+            pass
+    return xml_Doc
+
+
+def find_normal_note(notes, grace_index):
+    grace_note = notes[grace_index]
+    return notes

@@ -140,7 +140,7 @@ class MusicXMLParserState(object):
     self.time_signature = None
 
 
-class MusicXMLDocument(object):
+class MusicXMLDocumentOld(object):
   """Internal representation of a MusicXML Document.
 
   Represents the top level object which holds the MusicXML document

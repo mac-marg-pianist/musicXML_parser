@@ -1,0 +1,81 @@
+from fractions import Fraction
+import xml.etree.ElementTree as ET
+import zipfile
+from magenta.exception import UnpitchedNoteException, PitchStepParseException
+
+class Notations(object):
+  """Internal representation of a MusicXML Note's Notations properties.
+  
+  This represents musical notations symbols, articulationsNo with ten components:
+
+  1) accent
+  2) arpeggiate
+  3) fermata
+  4) mordent
+  5) staccato
+  6) tenuto
+  7) tie
+  8) tied
+  9) trill
+  10) tuplet
+
+  """
+  def __init__(self, xml_notations=None):
+    self.xml_notations = xml_notations
+    self.is_accent = False             
+    self.is_arpeggiate = False        
+    self.is_fermata = False            
+    self.is_mordent = False            
+    self.is_staccato = False           
+    self.is_tenuto = False            
+    self.tie = None                 # 'start' or 'stop' or None
+    self.tied = None                # 'start' or 'stop' or None
+    self.is_trill = False          
+    self.is_tuplet = False
+
+  def parse_notations(self, xml_notations):
+    """Parse the MusicXML <Notations> element."""
+    self.xml_notations = xml_notations
+    if self.xml_notations is not None:
+      notations = self.xml_notations.getchildren()
+      for child in notations:    
+        if child.tag == 'articulations':
+          self._parse_articulations(child)
+        elif child.tag == 'tie':
+          self.tie = child.attrib['type']
+        elif child.tag == 'tied':
+          self.tied = child.attrib['type']
+        elif child.tag == 'ornaments':
+          self._parse_ornaments(child)
+
+  def _parse_articulations(self, xml_articulation):
+    """Parse the MusicXML <Articulations> element.
+
+    Args:
+      xml_articulation: XML element with tag type 'articulation'.
+    """
+    tag = xml_articulation.getchildren()[0].tag
+    if tag == 'arpeggiate':
+      self.is_arpeggiate = True
+    elif tag == 'accent':
+      self.is_accent = True
+    elif tag == 'fermata':
+      self.is_fermata = True
+    elif tag == 'staccato':
+      self.is_staccato = True
+    elif tag == 'tenuto':
+      self.is_tenuto = True
+    elif tag == 'tuplet':
+      self.is_tuplet = True
+  
+  def _parse_ornaments(self, xml_ornaments):
+    """Parse the MusicXML <ornaments> element.
+
+    Args:
+      xml_ornaments: XML element with tag type 'ornaments'.
+    """
+    tag = xml_ornaments.getchildren()[0].tag
+    if tag == 'trill-mark':
+      self.is_trill = True
+    if tag == 'inverted-mordent' or tag == 'mordent':
+      self.is_mordent = True

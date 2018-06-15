@@ -14,4 +14,4 @@
 
 """Imports objects from music modules into the top-level music namespace."""
 
-from magenta.musicxml_parser import MusicXMLDocument
+from magenta.main import MusicXMLDocument
