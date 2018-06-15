@@ -29,7 +29,8 @@ class Notations(object):
     self.is_staccato = False           
     self.is_tenuto = False            
     self.tie = None                 # 'start' or 'stop' or None
-    self.tied = None                # 'start' or 'stop' or None
+    self.tied_start = False
+    self.tied_stop = False
     self.is_trill = False          
     self.is_tuplet = False
 
@@ -44,7 +45,10 @@ class Notations(object):
         elif child.tag == 'tie':
           self.tie = child.attrib['type']
         elif child.tag == 'tied':
-          self.tied = child.attrib['type']
+          if child.attrib['type'] == 'start':
+            self.tied_start = True
+          elif child.attrib['type'] =='stop':
+            self.tied_stop = True
         elif child.tag == 'ornaments':
           self._parse_ornaments(child)
 
