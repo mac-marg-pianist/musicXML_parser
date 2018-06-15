@@ -614,7 +614,6 @@ class Measure(object):
       if child.tag == 'sound':
         if child.get('tempo') is not None:
           tempo = Tempo(self.state, child)
-          print(tempo, tempo.xml_position)
           self.tempos.append(tempo)
           self.state.qpm = tempo.qpm
           self.state.seconds_per_quarter = 60 / self.state.qpm
