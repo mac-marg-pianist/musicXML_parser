@@ -339,7 +339,6 @@ class MusicXMLDocument(object):
 
     return tempos
 
-
   def recalculate_time_position(self):
     tempos = self.get_tempos()
 
@@ -348,7 +347,7 @@ class MusicXMLDocument(object):
     for i in range(len(tempos)):
       tempos[i].time_position = new_time_position
       if i +1 < len(tempos):
-        new_time_position +=  (tempos[i+1].xml_position - tempos[i].xml_position) / tempos[i].qpm
+        new_time_position +=  (tempos[i+1].xml_position - tempos[i].xml_position) / tempos[i].qpm * 60 / tempos[i].state.divisions
 
     for part in self.parts:
       for measure in part.measures:
@@ -356,11 +355,15 @@ class MusicXMLDocument(object):
         for note in measure.notes:
           for i in range(len(tempos)):
             if i + 1 == len(tempos):
-              current_tempo = tempos[i].qpm
+              current_tempo = tempos[i].qpm * 60 / tempos[i].state.divisions
               break
             else:
               if tempos[i].xml_position <= note.note_duration.xml_position and tempos[i+1].xml_position > note.note_duration.xml_position:
-                current_tempo = tempos[i].qpm
+                current_tempo = tempos[i].qpm * 60 / tempos[i].state.divisions
                 break
           note.note_duration.time_position = tempos[i].time_position + (note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
+
+
+
+
 
