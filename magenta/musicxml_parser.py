@@ -284,6 +284,8 @@ class MusicXMLDocument(object):
       if self._state.xml_position > self.total_duration:
         self.total_duration = self._state.xml_position
 
+    self.recalculate_time_position()
+
   def get_chord_symbols(self):
     """Return a list of all the chord symbols used in this score."""
     chord_symbols = []
@@ -385,8 +387,33 @@ class MusicXMLDocument(object):
       tempo.time_position = 0
       tempo.xml_position = 0
       tempos.append(tempo)
-
     return tempos
+
+  def recalculate_time_position(self):
+    tempos = self.get_tempos()
+
+    tempos.sort(key=lambda x: x.xml_position)
+    new_time_position =0
+    for i in range(len(tempos)):
+      tempos[i].new_time_position = new_time_position
+      if i +1 < len(tempos):
+        new_time_position +=  (tempos[i+1].xml_position - tempos[i].xml_position) / tempos[i].qpm
+
+    for part in self.parts:
+      for measure in part.measures:
+        print(measure.start_xml_position)
+        for note in measure.notes:
+          for i in range(len(tempos)):
+            if i + 1 == len(tempos):
+              current_tempo = tempos[i].qpm
+              break
+            else:
+              if tempos[i].xml_position <= note.note_duration.xml_position and tempos[i+1].xml_position > note.note_duration.xml_position:
+                current_tempo = tempos[i].qpm
+                break
+          note.note_duration.time_position = tempos[i].new_time_position + (note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
+
+
 
 
 class ScorePart(object):
