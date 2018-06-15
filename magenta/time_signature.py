@@ -1,4 +1,5 @@
 from magenta.exception import AlternatingTimeSignatureException, TimeSignatureParseException
+import copy
 
 class TimeSignature(object):
   """Internal representation of a MusicXML time signature.
@@ -15,7 +16,7 @@ class TimeSignature(object):
     self.denominator = -1
     self.time_position = 0
     self.xml_position = 0
-    self.state = state
+    self.state = copy.copy(state)
     if xml_time is not None:
       self._parse()
 

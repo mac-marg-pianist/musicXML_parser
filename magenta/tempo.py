@@ -14,7 +14,7 @@ import zipfile
 
 import six
 import magenta.constants
-
+import copy
 
 class Tempo(object):
   """Internal representation of a MusicXML tempo."""
@@ -24,7 +24,7 @@ class Tempo(object):
     self.qpm = -1
     self.time_position = -1
     self.xml_position = -1
-    self.state = state
+    self.state = copy.copy(state)
     if xml_sound is not None:
       self._parse()
 

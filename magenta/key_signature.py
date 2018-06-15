@@ -1,4 +1,5 @@
 from magenta.exception  import KeyParseException
+import copy
 
 class KeySignature(object):
   """Internal representation of a MusicXML key signature."""
@@ -12,7 +13,7 @@ class KeySignature(object):
     self.mode = 'major'
     self.time_position = -1
     self.xml_position = -1
-    self.state = state
+    self.state = copy.copy(state)
     if xml_key is not None:
       self._parse()
 
