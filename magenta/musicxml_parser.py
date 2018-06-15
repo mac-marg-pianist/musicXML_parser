@@ -32,6 +32,7 @@ import zipfile
 
 import six
 import magenta.constants
+import copy
 
 DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
 DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)
@@ -117,6 +118,7 @@ class MusicXMLParserState(object):
     # Running total of time for the current event in seconds.
     # Resets to 0 on every part. Affected by <forward> and <backup> elements
     self.time_position = 0
+    self.xml_position = 0
 
     # Default to a MIDI velocity of 64 (mf)
     self.velocity = 64
@@ -158,6 +160,7 @@ class MusicXMLDocument(object):
     self._state = MusicXMLParserState()
     # Total time in seconds
     self.total_time_secs = 0
+    self.total_duration = 0
     self._parse()
 
   @staticmethod
@@ -278,6 +281,8 @@ class MusicXMLDocument(object):
       score_part_index += 1
       if self._state.time_position > self.total_time_secs:
         self.total_time_secs = self._state.time_position
+      if self._state.xml_position > self.total_duration:
+        self.total_duration = self._state.xml_position
 
   def get_chord_symbols(self):
     """Return a list of all the chord symbols used in this score."""
@@ -352,6 +357,7 @@ class MusicXMLDocument(object):
       # If there are no key signatures, add C major at the beginning
       key_signature = KeySignature(self._state)
       key_signature.time_position = 0
+      key_signature.xml_position = 0
       key_signatures.append(key_signature)
 
     return key_signatures
@@ -377,6 +383,7 @@ class MusicXMLDocument(object):
       tempo = Tempo(self._state)
       tempo.qpm = self._state.qpm
       tempo.time_position = 0
+      tempo.xml_position = 0
       tempos.append(tempo)
 
     return tempos
@@ -449,6 +456,7 @@ class Part(object):
 
     # Reset the time position when parsing each part
     self._state.time_position = 0
+    self._state.xml_position = 0
     self._state.midi_channel = self.score_part.midi_channel
     self._state.midi_program = self.score_part.midi_program
     self._state.transpose = 0
@@ -515,6 +523,7 @@ class Measure(object):
     # Record the starting time of this measure so that time signatures
     # can be inserted at the beginning of the measure
     self.start_time_position = self.state.time_position
+    self.start_xml_position = self.state.xml_position
     self._parse()
     # Update the time signature if a partial or pickup measure
     self._fix_time_signature()
@@ -596,6 +605,7 @@ class Measure(object):
     seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position -= seconds
+    self.state.xml_position -= backup_duration
 
   def _parse_direction(self, xml_direction):
     """Parse the MusicXML <direction> element."""
@@ -604,6 +614,7 @@ class Measure(object):
       if child.tag == 'sound':
         if child.get('tempo') is not None:
           tempo = Tempo(self.state, child)
+          print(tempo, tempo.xml_position)
           self.tempos.append(tempo)
           self.state.qpm = tempo.qpm
           self.state.seconds_per_quarter = 60 / self.state.qpm
@@ -626,6 +637,7 @@ class Measure(object):
     seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position += seconds
+    self.state.xml_position += forward_duration
 
   def _fix_time_signature(self):
     """Correct the time signature for incomplete measures.
@@ -688,6 +700,7 @@ class Measure(object):
           (self.time_signature is None
            and (fractional_time_signature != fractional_state_time_signature))):
         new_time_signature.time_position = self.start_time_position
+        new_time_signature.xml_position = self.start_xml_position
         self.time_signature = new_time_signature
         self.state.time_signature = new_time_signature
 
@@ -704,6 +717,7 @@ class Note(object):
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
     self.state = state
+    # self.state = copy.copy(state)
     self.tie = False
     self._parse()
 
@@ -854,6 +868,7 @@ class NoteDuration(object):
     self.midi_ticks = 0                 # Duration in MIDI ticks
     self.seconds = 0                    # Duration in seconds
     self.time_position = 0              # Onset time in seconds
+    self.xml_position = 0
     self.dots = 0                       # Number of augmentation dots
     self._type = 'quarter'              # MusicXML duration type
     self.tuplet_ratio = Fraction(1, 1)  # Ratio for tuplets (default to 1)
@@ -876,6 +891,7 @@ class NoteDuration(object):
     self.seconds *= self.state.seconds_per_quarter
 
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
 
     # Not sure how to handle durations of grace notes yet as they
     # steal time from subsequent notes and they do not have a
@@ -887,9 +903,11 @@ class NoteDuration(object):
       # of the previous note (i.e. all the notes in the chord will have
       # the same time position)
       self.time_position = self.state.previous_note.note_duration.time_position
+      self.xml_position = self.state.previous_note.note_duration.xml_position
     else:
       # Only increment time positions once in chord
       self.state.time_position += self.seconds
+      self.state.xml_position += self.duration
 
   def _convert_type_to_ratio(self):
     """Convert the MusicXML note-type-value to a Python Fraction.
@@ -1051,6 +1069,7 @@ class ChordSymbol(object):
   def __init__(self, xml_harmony, state):
     self.xml_harmony = xml_harmony
     self.time_position = -1
+    self.xml_position = -1
     self.root = None
     self.kind = ''
     self.degrees = []
@@ -1097,6 +1116,7 @@ class ChordSymbol(object):
   def _parse(self):
     """Parse the MusicXML <harmony> element."""
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
 
     for child in self.xml_harmony:
       if child.tag == 'root':
@@ -1124,6 +1144,7 @@ class ChordSymbol(object):
         seconds = (midi_ticks / magenta.constants.STANDARD_PPQ *
                    self.state.seconds_per_quarter)
         self.time_position += seconds
+        self.xml_position += offset
       else:
         # Ignore other tag types because they are not relevant to Magenta.
         pass
@@ -1242,6 +1263,7 @@ class TimeSignature(object):
     self.numerator = -1
     self.denominator = -1
     self.time_position = 0
+    self.xml_position = 0
     self.state = state
     if xml_time is not None:
       self._parse()
@@ -1263,6 +1285,7 @@ class TimeSignature(object):
       raise TimeSignatureParseException(
           'Could not parse time signature: {}/{}'.format(beats, beat_type))
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
 
   def __str__(self):
     time_sig_str = str(self.numerator) + '/' + str(self.denominator)
@@ -1290,6 +1313,7 @@ class KeySignature(object):
     # mode is "major" or "minor" only: MIDI only supports major and minor
     self.mode = 'major'
     self.time_position = -1
+    self.xml_position = -1
     self.state = state
     if xml_key is not None:
       self._parse()
@@ -1315,6 +1339,8 @@ class KeySignature(object):
       mode = 'major'
     self.mode = mode
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
+
 
   def __str__(self):
     keys = (['Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F', 'C', 'G', 'D',
@@ -1351,6 +1377,8 @@ class Tempo(object):
       # If tempo is 0, set it to default
       self.qpm = magenta.constants.DEFAULT_QUARTERS_PER_MINUTE
     self.time_position = self.state.time_position
+    self.xml_position = self.state.xml_position
+
 
   def __str__(self):
     tempo_str = 'Tempo: ' + str(self.qpm)
