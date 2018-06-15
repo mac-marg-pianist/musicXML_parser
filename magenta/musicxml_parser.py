@@ -716,8 +716,8 @@ class Note(object):
     self.is_grace_note = False
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
-    self.state = state
-    # self.state = copy.copy(state)
+    # self.state = state
+    self.state = copy.copy(state)
     self.tie = False
     self._parse()
 
@@ -1074,7 +1074,7 @@ class ChordSymbol(object):
     self.kind = ''
     self.degrees = []
     self.bass = None
-    self.state = state
+    self.state = copy.copy(state)
     self._parse()
 
   def _alter_to_string(self, alter_text):
@@ -1264,7 +1264,7 @@ class TimeSignature(object):
     self.denominator = -1
     self.time_position = 0
     self.xml_position = 0
-    self.state = state
+    self.state = copy.copy(state)
     if xml_time is not None:
       self._parse()
 
@@ -1314,7 +1314,7 @@ class KeySignature(object):
     self.mode = 'major'
     self.time_position = -1
     self.xml_position = -1
-    self.state = state
+    self.state = copy.copy(state)
     if xml_key is not None:
       self._parse()
 
@@ -1363,7 +1363,7 @@ class Tempo(object):
     self.xml_sound = xml_sound
     self.qpm = -1
     self.time_position = -1
-    self.state = state
+    self.state = copy.copy(state)
     if xml_sound is not None:
       self._parse()
 
