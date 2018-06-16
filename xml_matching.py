@@ -3,11 +3,11 @@ import csv
 def apply_tied_notes(xml_parsed_notes):
     tie_clean_list = []
     for i in range(len(xml_parsed_notes)):
-        if xml_parsed_notes[i].tie == False or xml_parsed_notes[i].tie == 'start':
+        if xml_parsed_notes[i].note_notations.tied_stop == False:
             tie_clean_list.append(xml_parsed_notes[i])
-        elif xml_parsed_notes[i].tie == 'stop' or xml_parsed_notes[i].tie == 'start_stop':
+        else:
             for j in reversed(range(len(tie_clean_list))):
-                if tie_clean_list[j].tie == 'start' and tie_clean_list[j].pitch[1] == xml_parsed_notes[i].pitch[1]:
+                if tie_clean_list[j].note_notations.tied_start == True and tie_clean_list[j].pitch[1] == xml_parsed_notes[i].pitch[1]:
                     tie_clean_list[j].note_duration.seconds +=  xml_parsed_notes[i].note_duration.seconds
                     tie_clean_list[j].note_duration.duration +=  xml_parsed_notes[i].note_duration.duration
                     tie_clean_list[j].note_duration.midi_ticks +=  xml_parsed_notes[i].note_duration.midi_ticks
@@ -18,12 +18,15 @@ def apply_tied_notes(xml_parsed_notes):
 def matchXMLtoMIDI(xml_notes, midi_notes):
     candidates_list = []
     match_list = []
+
+    # for each note in xml, make candidates of the matching midi note
     for i in range(len(xml_notes)):
         note = xml_notes[i]
         if note.is_rest:
             candidates_list.append([])
             continue
         note_start = note.note_duration.time_position
+        # check grace note and adjust time_position
         if note.note_duration.time_position == 0 and note.note_duration.duration == 0:
             # print(i)
             note_start = xml_notes[i+1].note_duration.time_position
@@ -101,6 +104,8 @@ def match_score_pair2perform(pairs, perform_midi, corresp_list):
     return match_list
 
 def match_xml_midi_perfrom(xml_notes, midi_notes, perform_notes, corresp):
+    xml_notes = apply_tied_notes(xml_notes)
+    print(len(xml_notes))
     match_list = matchXMLtoMIDI(xml_notes, midi_notes)
     score_pairs = make_xml_midi_pair(xml_notes, midi_notes, match_list)
     xml_perform_match = match_score_pair2perform(score_pairs, perform_notes, corresp)

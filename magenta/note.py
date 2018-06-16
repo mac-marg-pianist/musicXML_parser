@@ -23,6 +23,7 @@ import zipfile
 from magenta.exception import UnpitchedNoteException, PitchStepParseException
 from magenta.notations import Notations
 from magenta.note_duration import NoteDuration
+import copy
 
 class Note(object):
   """Internal representation of a MusicXML <note> element."""
@@ -37,7 +38,7 @@ class Note(object):
     self.is_grace_note = False      
     self.pitch = None               # Tuple (Pitch Name, MIDI number)
     self.note_duration = NoteDuration(state)
-    self.state = state
+    self.state = copy.copy(state)
     self.note_notations = Notations()
     self._parse()
 
