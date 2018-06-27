@@ -113,6 +113,7 @@ class MusicXMLDocument(object):
     self.total_time_secs = 0
     self.total_time_duration = 0
     self._parse()
+    self.recalculate_time_position()
 
   @staticmethod
   def _get_score(filename):
@@ -351,15 +352,14 @@ class MusicXMLDocument(object):
 
     for part in self.parts:
       for measure in part.measures:
-        print(measure.start_xml_position)
         for note in measure.notes:
           for i in range(len(tempos)):
             if i + 1 == len(tempos):
-              current_tempo = tempos[i].qpm * 60 / tempos[i].state.divisions
+              current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
               break
             else:
               if tempos[i].xml_position <= note.note_duration.xml_position and tempos[i+1].xml_position > note.note_duration.xml_position:
-                current_tempo = tempos[i].qpm * 60 / tempos[i].state.divisions
+                current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
                 break
           note.note_duration.time_position = tempos[i].time_position + (note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
 
