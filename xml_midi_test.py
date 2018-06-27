@@ -3,10 +3,14 @@ import midi_utils.midi_utils as midi_utils
 import xml_matching
 
 
-XMLDocument = MusicXMLDocument("magenta/testdata/chopin10-3/xml.xml")
-melody_notes = xml_matching.extract_notes(XMLDocument, melody_only=True)
+# XMLDocument = MusicXMLDocument("magenta/testdata/chopin10-3/xml.xml")
+XMLDocument = MusicXMLDocument("magenta/testdata/chopinBallade1/xml.xml")
+melody_notes = xml_matching.extract_notes(XMLDocument, melody_only=False)
+melody_notes.sort(key=lambda x: x.note_duration.time_position)
 # midi = pretty_midi.PrettyMIDI("magenta/testdata/chopin10-3/midi.mid")
-score_midi = midi_utils.to_midi_zero("magenta/testdata/chopin10-3/midi.mid")
+# score_midi = midi_utils.to_midi_zero("magenta/testdata/chopin10-3/midi.mid")
+score_midi = midi_utils.to_midi_zero("magenta/testdata/chopinBallade1/midi.mid")
+
 perform_midi = midi_utils.to_midi_zero("magenta/testdata/chopin10-3/Sun08.mid")
 score_midi_notes = score_midi.instruments[0].notes
 perform_midi_notes = perform_midi.instruments[0].notes
@@ -15,23 +19,20 @@ corresp = xml_matching.read_corresp("magenta/testdata/chopin10-3/Sun08_infer_cor
 
 score_pairs, perform_pairs = xml_matching.match_xml_midi_perfrom(melody_notes,score_midi_notes, perform_midi_notes, corresp)
 
-
-#
-#
 # for pair in pairs:
 #     print('XML: ', pair['xml'].pitch, pair['xml'].note_duration.time_position, 'MIDI: ', pair['midi'])
 #
 non_matched_count = 0
 for pair in score_pairs:
-    print(pair)
     if pair ==[]:
         non_matched_count += 1
-
+    else:
+        print('XML Note pitch:', pair['xml'].pitch , ' and time: ', pair['xml'].note_duration.time_position , '-- MIDI: ', pair['midi'])
+print('Number of non matched XML notes: ', non_matched_count)
 print(len(score_pairs), non_matched_count)
-melody_notes.sort(key=lambda x: x.note_duration.time_position)
-for note in melody_notes:
+# for note in melody_notes:
     # print(note.note_duration.time_position, note.note_duration.xml_position)
-    pass
+    # pass
 #
 
 # for i in range(len(melody_notes)-1):
@@ -41,5 +42,5 @@ for note in melody_notes:
 # tempo_list = XMLDocument.get_tempos()
 # tempo_list = XMLDocument.recalculate_time_position()
 # for tempo in tempo_list:
-#     print(tempo, tempo.xml_position, tempo.new_time_position)
+#     print(tempo, tempo.xml_position, tempo.state.divisions)
 

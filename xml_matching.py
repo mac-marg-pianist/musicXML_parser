@@ -105,7 +105,7 @@ def match_score_pair2perform(pairs, perform_midi, corresp_list):
 
 def match_xml_midi_perfrom(xml_notes, midi_notes, perform_notes, corresp):
     xml_notes = apply_tied_notes(xml_notes)
-    print(len(xml_notes))
+    # print(len(xml_notes))
     match_list = matchXMLtoMIDI(xml_notes, midi_notes)
     score_pairs = make_xml_midi_pair(xml_notes, midi_notes, match_list)
     xml_perform_match = match_score_pair2perform(score_pairs, perform_notes, corresp)
