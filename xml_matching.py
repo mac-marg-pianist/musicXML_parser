@@ -1,4 +1,6 @@
+from __future__ import division
 import csv
+import math
 
 def apply_tied_notes(xml_parsed_notes):
     tie_clean_list = []
@@ -127,6 +129,8 @@ def extract_notes(xml_Doc, melody_only = False):
                     notes.append(note)
     if melody_only:
         notes = delete_chord_notes_for_melody(notes)
+
+    notes = apply_tied_notes(notes)
     return notes
 
 def delete_chord_notes_for_melody(melody_notes):
@@ -168,18 +172,61 @@ def find_normal_note(notes, grace_index):
 
 
 def extract_perform_features(xml_notes, pairs):
+    print(len(xml_notes), len(pairs))
     features = []
+    velocity_mean = calculate_mean_velocity(pairs)
+    total_length_tuple = calculate_total_length(pairs)
+    print(total_length_tuple[0], total_length_tuple[1] )
+
     for i in range(len(xml_notes)):
         feature ={}
         feature['pitch_interval'] = calculate_pitch_interval(xml_notes, i)
+        feature['duration_ratio'] = calculate_duration_ratio(xml_notes, i)
+        if not pairs[i] == []:
+            feature['IOI_ratio'] = calculate_IOI(pairs,i, total_length_tuple)
+            feature['loudness'] = math.log( pairs[i]['midi'].velocity / velocity_mean, 10)
+        else:
+            feature['IOI_ratio'] = None
+            feature['loudness'] = 0
+        # feature['articulation']
         features.append(feature)
-    pairs_with_features = calculate_tempo_from_pair(pairs)
 
     return features
 
-def calculate_tempo_from_pair(pairs):
+def calculate_IOI(pairs, index, total_length):
+    if index < len(pairs)-1 and not pairs[index+1] == [] :
+        xml_ioi = pairs[index+1]['xml'].note_duration.xml_position - pairs[index]['xml'].note_duration.xml_position
+        midi_ioi =  pairs[index+1]['midi'].start - pairs[index]['midi'].start
 
-    return
+        ioi = math.log( midi_ioi/total_length[1]  /  (xml_ioi/total_length[0]), 10)
+    else:
+        ioi = None
+
+    return ioi
+
+def calcuate_articluation():
+
+
+    return 0
+
+def calculate_total_length(pairs):
+    for i in range(len(pairs)):
+        if not pairs[-i-1] == []:
+            xml_length =  pairs[-i-1]['xml'].note_duration.xml_position - pairs[0]['xml'].note_duration.xml_position
+            midi_length = pairs[-i-1]['midi'].start - pairs[0]['midi'].start
+            break
+    return (xml_length, midi_length)
+
+def calculate_mean_velocity(pairs):
+    sum = 0
+    length =0
+    for pair in pairs:
+        if not pair == []:
+            sum += pair['midi'].velocity
+            length += 1
+
+    return sum/float(length)
+
 
 
 def calculate_pitch_interval(xml_notes, index):
@@ -188,3 +235,10 @@ def calculate_pitch_interval(xml_notes, index):
     else:
         pitch_interval = None
     return pitch_interval
+
+def calculate_duration_ratio(xml_notes, index):
+    if index < len(xml_notes)-1:
+        duration_ratio = math.log(xml_notes[index+1].note_duration.duration / float(xml_notes[index].note_duration.duration), 10)
+    else:
+        duration_ratio = None
+    return duration_ratio
