@@ -36,7 +36,7 @@ class NoteDuration(object):
     self.midi_ticks = self.duration
     self.midi_ticks *= (magenta.constants.STANDARD_PPQ / self.state.divisions)
 
-    self.seconds = (self.midi_ticks / magenta.constants.STANDARD_PPQ)
+    self.seconds = (self.midi_ticks / float(magenta.constants.STANDARD_PPQ))
     self.seconds *= self.state.seconds_per_quarter
 
     self.time_position = float("{0:.8f}".format(self.state.time_position))
