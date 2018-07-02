@@ -1,8 +1,8 @@
-# Updated 2018.06.01
+# Updated 2018.07.02
 
 import itertools
 from operator import itemgetter
-from magenta import MusicXMLDocument
+from mxp import MusicXMLDocument
 from itertools import chain
 
 class OnsetState(object):

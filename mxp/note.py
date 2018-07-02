@@ -1,28 +1,9 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""MusicXML parser.
-
-Simple MusicXML parser used to convert MusicXML
-into tensorflow.magenta.NoteSequence.
-"""
-
 from fractions import Fraction
 import xml.etree.ElementTree as ET
 import zipfile
-from magenta.exception import UnpitchedNoteException, PitchStepParseException
-from magenta.notations import Notations
-from magenta.note_duration import NoteDuration
+from mxp.exception import UnpitchedNoteException, PitchStepParseException
+from mxp.notations import Notations
+from mxp.note_duration import NoteDuration
 import copy
 
 class Note(object):
@@ -73,7 +54,7 @@ class Note(object):
       elif child.tag == 'unpitched':
         raise UnpitchedNoteException('Unpitched notes are not supported')
       else:
-        # Ignore other tag types because they are not relevant to Magenta.
+        # Ignore other tag types because they are not relevant to mxp.
         pass
 
   def _parse_pitch(self, xml_pitch):

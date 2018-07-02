@@ -14,7 +14,7 @@
 """MusicXML parser.
 
 Simple MusicXML parser used to convert MusicXML
-into tensorflow.magenta.NoteSequence.
+into tensorflow.mxp.NoteSequence.
 """
 
 # Imports
@@ -31,7 +31,7 @@ import zipfile
 # internal imports
 
 import six
-import magenta.constants
+import mxp.constants
 import copy
 
 DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
@@ -105,7 +105,7 @@ class MusicXMLParserState(object):
     self.divisions = 1
 
     # Default to a tempo of 120 quarter notes per minute
-    # MusicXML calls this tempo, but Magenta calls this qpm
+    # MusicXML calls this tempo, but mxp calls this qpm
     # Therefore, the variable is called qpm, but reads the
     # MusicXML tempo attribute
     # (120 qpm is the default tempo according to the
@@ -156,7 +156,7 @@ class MusicXMLDocumentOld(object):
     self.parts = []
     # ScoreParts indexed by id.
     self._score_parts = {}
-    self.midi_resolution = magenta.constants.STANDARD_PPQ
+    self.midi_resolution = mxp.constants.STANDARD_PPQ
     self._state = MusicXMLParserState()
     # Total time in seconds
     self.total_time_secs = 0
@@ -304,13 +304,13 @@ class MusicXMLDocumentOld(object):
     time signature, such as Part 1 having a time signature of 6/8
     while Part 2 has a simultaneous time signature of 2/4).
 
-    Ignores duplicate time signatures to prevent Magenta duplicate
+    Ignores duplicate time signatures to prevent mxp duplicate
     time signature error. This happens when multiple parts have the
     same time signature is used in multiple parts at the same time.
 
     Example: If Part 1 has a time siganture of 4/4 and Part 2 also
     has a time signature of 4/4, then only instance of 4/4 is sent
-    to Magenta.
+    to mxp.
 
     Returns:
       A list of all TimeSignature objects used in this score.
@@ -331,7 +331,7 @@ class MusicXMLDocumentOld(object):
     Support different key signatures in different parts (score in
     written pitch).
 
-    Ignores duplicate key signatures to prevent Magenta duplicate key
+    Ignores duplicate key signatures to prevent mxp duplicate key
     signature error. This happens when multiple parts have the same
     key signature at the same time.
 
@@ -581,7 +581,7 @@ class Measure(object):
         self.chord_symbols.append(chord_symbol)
 
       else:
-        # Ignore other tag types because they are not relevant to Magenta.
+        # Ignore other tag types because they are not relevant to mxp.
         pass
 
   def _parse_attributes(self, xml_attributes):
@@ -613,7 +613,7 @@ class Measure(object):
             new_key %= -6
           self.key_signature.key = new_key
       else:
-        # Ignore other tag types because they are not relevant to Magenta.
+        # Ignore other tag types because they are not relevant to mxp.
         pass
 
   def _parse_backup(self, xml_backup):
@@ -627,9 +627,9 @@ class Measure(object):
 
     xml_duration = xml_backup.find('duration')
     backup_duration = int(xml_duration.text)
-    midi_ticks = backup_duration * (magenta.constants.STANDARD_PPQ
+    midi_ticks = backup_duration * (mxp.constants.STANDARD_PPQ
                                     / self.state.divisions)
-    seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
+    seconds = ((midi_ticks / mxp.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position -= seconds
     self.state.xml_position -= backup_duration
@@ -658,9 +658,9 @@ class Measure(object):
 
     xml_duration = xml_forward.find('duration')
     forward_duration = int(xml_duration.text)
-    midi_ticks = forward_duration * (magenta.constants.STANDARD_PPQ
+    midi_ticks = forward_duration * (mxp.constants.STANDARD_PPQ
                                      / self.state.divisions)
-    seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
+    seconds = ((midi_ticks / mxp.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position += seconds
     self.state.xml_position += forward_duration
@@ -781,7 +781,7 @@ class Note(object):
         else:
           self.tie = 'start_stop'
       else:
-        # Ignore other tag types because they are not relevant to Magenta.
+        # Ignore other tag types because they are not relevant to mxp.
         pass
 
   def _parse_pitch(self, xml_pitch):
@@ -911,9 +911,9 @@ class NoteDuration(object):
       self.duration = self.state.previous_note.note_duration.duration
 
     self.midi_ticks = self.duration
-    self.midi_ticks *= (magenta.constants.STANDARD_PPQ / self.state.divisions)
+    self.midi_ticks *= (mxp.constants.STANDARD_PPQ / self.state.divisions)
 
-    self.seconds = (self.midi_ticks / magenta.constants.STANDARD_PPQ)
+    self.seconds = (self.midi_ticks / mxp.constants.STANDARD_PPQ)
     self.seconds *= self.state.seconds_per_quarter
 
     self.time_position = self.state.time_position
@@ -1166,13 +1166,13 @@ class ChordSymbol(object):
         except ValueError:
           raise ChordSymbolParseException('Non-integer offset: ' +
                                           str(child.text))
-        midi_ticks = offset * magenta.constants.STANDARD_PPQ / self.state.divisions
-        seconds = (midi_ticks / magenta.constants.STANDARD_PPQ *
+        midi_ticks = offset * mxp.constants.STANDARD_PPQ / self.state.divisions
+        seconds = (midi_ticks / mxp.constants.STANDARD_PPQ *
                    self.state.seconds_per_quarter)
         self.time_position += seconds
         self.xml_position += offset
       else:
-        # Ignore other tag types because they are not relevant to Magenta.
+        # Ignore other tag types because they are not relevant to mxp.
         pass
 
     if self.root is None and self.kind != 'N.C.':
@@ -1401,7 +1401,7 @@ class Tempo(object):
     self.qpm = float(self.xml_sound.get('tempo'))
     if self.qpm == 0:
       # If tempo is 0, set it to default
-      self.qpm = magenta.constants.DEFAULT_QUARTERS_PER_MINUTE
+      self.qpm = mxp.constants.DEFAULT_QUARTERS_PER_MINUTE
     self.time_position = self.state.time_position
     self.xml_position = self.state.xml_position
 

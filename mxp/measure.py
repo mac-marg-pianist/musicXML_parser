@@ -1,12 +1,12 @@
 from fractions import Fraction
 
-import magenta.constants
-from magenta.chord_symbol import ChordSymbol
-from magenta.tempo import Tempo
-from magenta.time_signature import TimeSignature
-from magenta.key_signature import KeySignature
-from magenta.exception import MultipleTimeSignatureException
-from magenta.note import Note
+import mxp.constants
+from mxp.chord_symbol import ChordSymbol
+from mxp.tempo import Tempo
+from mxp.time_signature import TimeSignature
+from mxp.key_signature import KeySignature
+from mxp.exception import MultipleTimeSignatureException
+from mxp.note import Note
 
 class Measure(object):
   """Internal represention of the MusicXML <measure> element."""
@@ -119,7 +119,7 @@ class Measure(object):
 
         
       else:
-        # Ignore other tag types because they are not relevant to Magenta.
+        # Ignore other tag types because they are not relevant to mxp.
         pass
 
   def _parse_backup(self, xml_backup):
@@ -133,9 +133,9 @@ class Measure(object):
 
     xml_duration = xml_backup.find('duration')
     backup_duration = int(xml_duration.text)
-    midi_ticks = backup_duration * (magenta.constants.STANDARD_PPQ
+    midi_ticks = backup_duration * (mxp.constants.STANDARD_PPQ
                                     / self.state.divisions)
-    seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
+    seconds = ((midi_ticks / mxp.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position -= seconds
     self.state.xml_position -= backup_duration
@@ -163,9 +163,9 @@ class Measure(object):
 
     xml_duration = xml_forward.find('duration')
     forward_duration = int(xml_duration.text)
-    midi_ticks = forward_duration * (magenta.constants.STANDARD_PPQ
+    midi_ticks = forward_duration * (mxp.constants.STANDARD_PPQ
                                      / self.state.divisions)
-    seconds = ((midi_ticks / magenta.constants.STANDARD_PPQ)
+    seconds = ((midi_ticks / mxp.constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position += seconds
     self.state.xml_position += forward_duration
