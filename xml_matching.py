@@ -119,14 +119,37 @@ def extract_notes(xml_Doc, melody_only = False):
     notes =[]
     for measure in parts.measures:
         for note in measure.notes:
-            if not note.is_rest:
+            if not note.is_rest and not note.note_duration.is_grace_note:
                 if melody_only:
                     if note.voice ==1:
                         notes.append(note)
                 else:
                     notes.append(note)
-
+    if melody_only:
+        notes = delete_chord_notes_for_melody(notes)
     return notes
+
+def delete_chord_notes_for_melody(melody_notes):
+    note_onset_positions = list(set(note.note_duration.xml_position for note in melody_notes))
+    note_onset_positions.sort()
+    unique_melody = []
+    for onset in note_onset_positions:
+        notes = find(lambda x: x.note_duration.xml_position == onset, melody_notes)
+        if len(notes) == 1:
+            unique_melody.append(notes[0])
+        else:
+            notes.sort(key=lambda x: x.pitch[1])
+            unique_melody.append(notes[-1])
+
+    return unique_melody
+
+def find(f, seq):
+  """Return first item in sequence where f(item) == True."""
+  items_list = []
+  for item in seq:
+    if f(item):
+      items_list.append(item)
+  return items_list
 
 
 def apply_grace(xml_Doc):
@@ -141,3 +164,27 @@ def apply_grace(xml_Doc):
 def find_normal_note(notes, grace_index):
     grace_note = notes[grace_index]
     return notes
+
+
+
+def extract_perform_features(xml_notes, pairs):
+    features = []
+    for i in range(len(xml_notes)):
+        feature ={}
+        feature['pitch_interval'] = calculate_pitch_interval(xml_notes, i)
+        features.append(feature)
+    pairs_with_features = calculate_tempo_from_pair(pairs)
+
+    return features
+
+def calculate_tempo_from_pair(pairs):
+
+    return
+
+
+def calculate_pitch_interval(xml_notes, index):
+    if index < len(xml_notes)-1:
+        pitch_interval = xml_notes[index+1].pitch[1] - xml_notes[index].pitch[1]
+    else:
+        pitch_interval = None
+    return pitch_interval
