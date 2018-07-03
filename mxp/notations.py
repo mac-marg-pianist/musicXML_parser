@@ -1,7 +1,7 @@
 from fractions import Fraction
 import xml.etree.ElementTree as ET
 import zipfile
-from magenta.exception import UnpitchedNoteException, PitchStepParseException
+from mxp.exception import UnpitchedNoteException, PitchStepParseException
 
 class Notations(object):
   """Internal representation of a MusicXML Note's Notations properties.

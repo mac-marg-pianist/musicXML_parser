@@ -1,6 +1,7 @@
+from __future__ import division
 from fractions import Fraction
-import magenta.constants
-from magenta.exception import InvalidNoteDurationTypeException
+import mxp.constants
+from mxp.exception import InvalidNoteDurationTypeException
 
 class NoteDuration(object):
   """Internal representation of a MusicXML note's duration properties."""
@@ -34,9 +35,9 @@ class NoteDuration(object):
       self.duration = self.state.previous_note.note_duration.duration
 
     self.midi_ticks = self.duration
-    self.midi_ticks *= (magenta.constants.STANDARD_PPQ / self.state.divisions)
+    self.midi_ticks *= (mxp.constants.STANDARD_PPQ / self.state.divisions)
 
-    self.seconds = (self.midi_ticks / float(magenta.constants.STANDARD_PPQ))
+    self.seconds = (self.midi_ticks / mxp.constants.STANDARD_PPQ)
     self.seconds *= self.state.seconds_per_quarter
 
     self.time_position = float("{0:.8f}".format(self.state.time_position))

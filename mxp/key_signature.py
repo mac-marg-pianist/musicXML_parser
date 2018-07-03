@@ -1,4 +1,4 @@
-from magenta.exception  import KeyParseException
+from mxp.exception  import KeyParseException
 import copy
 
 class KeySignature(object):

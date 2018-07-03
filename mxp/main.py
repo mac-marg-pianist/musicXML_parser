@@ -1,20 +1,4 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """MusicXML parser.
-
-Simple MusicXML parser used to convert MusicXML
-into tensorflow.magenta.NoteSequence.
 """
 
 # Imports
@@ -27,18 +11,18 @@ from __future__ import print_function
 from fractions import Fraction
 import xml.etree.ElementTree as ET
 import zipfile
-from magenta.exception import MusicXMLParseException, MultipleTimeSignatureException
+from mxp.exception import MusicXMLParseException, MultipleTimeSignatureException
 
 # internal imports
 
 import six
-import magenta.constants
+import mxp.constants
 
-from magenta.measure import Measure
-from magenta.tempo import Tempo
-from magenta.key_signature import KeySignature
-from magenta.score_part import ScorePart
-from magenta.part import Part
+from mxp.measure import Measure
+from mxp.tempo import Tempo
+from mxp.key_signature import KeySignature
+from mxp.score_part import ScorePart
+from mxp.part import Part
 
 DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
 DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)
@@ -56,7 +40,7 @@ class MusicXMLParserState(object):
     self.divisions = 1
 
     # Default to a tempo of 120 quarter notes per minute
-    # MusicXML calls this tempo, but Magenta calls this qpm
+    # MusicXML calls this tempo, but mxp calls this qpm
     # Therefore, the variable is called qpm, but reads the
     # MusicXML tempo attribute
     # (120 qpm is the default tempo according to the
@@ -107,7 +91,7 @@ class MusicXMLDocument(object):
     self.parts = []
     # ScoreParts indexed by id.
     self._score_parts = {}
-    self.midi_resolution = magenta.constants.STANDARD_PPQ
+    self.midi_resolution = mxp.constants.STANDARD_PPQ
     self._state = MusicXMLParserState()
     # Total time in seconds
     self.total_time_secs = 0
@@ -254,13 +238,13 @@ class MusicXMLDocument(object):
     time signature, such as Part 1 having a time signature of 6/8
     while Part 2 has a simultaneous time signature of 2/4).
 
-    Ignores duplicate time signatures to prevent Magenta duplicate
+    Ignores duplicate time signatures to prevent mxp duplicate
     time signature error. This happens when multiple parts have the
     same time signature is used in multiple parts at the same time.
 
     Example: If Part 1 has a time siganture of 4/4 and Part 2 also
     has a time signature of 4/4, then only instance of 4/4 is sent
-    to Magenta.
+    to mxp.
 
     Returns:
       A list of all TimeSignature objects used in this score.
@@ -281,7 +265,7 @@ class MusicXMLDocument(object):
     Support different key signatures in different parts (score in
     written pitch).
 
-    Ignores duplicate key signatures to prevent Magenta duplicate key
+    Ignores duplicate key signatures to prevent mxp duplicate key
     signature error. This happens when multiple parts have the same
     key signature at the same time.
 

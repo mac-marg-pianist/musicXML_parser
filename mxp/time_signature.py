@@ -1,4 +1,4 @@
-from magenta.exception import AlternatingTimeSignatureException, TimeSignatureParseException
+from mxp.exception import AlternatingTimeSignatureException, TimeSignatureParseException
 import copy
 
 class TimeSignature(object):

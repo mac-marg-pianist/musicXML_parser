@@ -1,7 +1,6 @@
-
 import six
-import magenta.constants
-import magenta.exception
+import mxp.constants
+import mxp.exception
 
 DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
 DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)

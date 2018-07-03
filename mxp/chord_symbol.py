@@ -1,6 +1,5 @@
-
-import magenta.constants
-from magenta.exception  import ChordSymbolParseException
+import mxp.constants
+from mxp.exception  import ChordSymbolParseException
 
 class ChordSymbol(object):
   """Internal representation of a MusicXML chord symbol <harmony> element.
@@ -166,13 +165,13 @@ class ChordSymbol(object):
         except ValueError:
           raise ChordSymbolParseException('Non-integer offset: ' +
                                           str(child.text))
-        midi_ticks = offset * magenta.constants.STANDARD_PPQ / self.state.divisions
-        seconds = (midi_ticks / magenta.constants.STANDARD_PPQ *
+        midi_ticks = offset * mxp.constants.STANDARD_PPQ / self.state.divisions
+        seconds = (midi_ticks / mxp.constants.STANDARD_PPQ *
                    self.state.seconds_per_quarter)
         self.time_position += seconds
         self.xml_position += offset
       else:
-        # Ignore other tag types because they are not relevant to Magenta.
+        # Ignore other tag types because they are not relevant to mxp.
         pass
 
     if self.root is None and self.kind != 'N.C.':

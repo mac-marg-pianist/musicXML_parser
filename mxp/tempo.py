@@ -1,19 +1,4 @@
-
-# Imports
-# Python 2 uses integer division for integers. Using this gives the Python 3
-# behavior of producing a float when dividing integers
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from fractions import Fraction
-import xml.etree.ElementTree as ET
-import zipfile
-
-# internal imports
-
-import six
-import magenta.constants
+import mxp.constants
 import copy
 
 class Tempo(object):
@@ -36,7 +21,7 @@ class Tempo(object):
     self.qpm = float(self.xml_sound.get('tempo'))
     if self.qpm == 0:
       # If tempo is 0, set it to default
-      self.qpm = magenta.constants.DEFAULT_QUARTERS_PER_MINUTE
+      self.qpm = mxp.constants.DEFAULT_QUARTERS_PER_MINUTE
     self.time_position = self.state.time_position
     self.xml_position = self.state.xml_position
 
