@@ -1,3 +1,4 @@
+from __future__ import division
 from fractions import Fraction
 import mxp.constants
 from mxp.exception import InvalidNoteDurationTypeException
