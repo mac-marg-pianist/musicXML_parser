@@ -183,39 +183,43 @@ def extract_perform_features(xml_notes, pairs):
         feature['pitch_interval'] = calculate_pitch_interval(xml_notes, i)
         feature['duration_ratio'] = calculate_duration_ratio(xml_notes, i)
         if not pairs[i] == []:
-            feature['IOI_ratio'] = calculate_IOI(pairs,i, total_length_tuple)
+            feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, total_length_tuple)
             feature['loudness'] = math.log( pairs[i]['midi'].velocity / velocity_mean, 10)
         else:
             feature['IOI_ratio'] = None
+            feature['articulation'] = None
             feature['loudness'] = 0
         # feature['articulation']
         features.append(feature)
 
     return features
 
-def calculate_IOI(pairs, index, total_length):
+def calculate_IOI_articulation(pairs, index, total_length):
     if index < len(pairs)-1 and not pairs[index+1] == [] :
         xml_ioi = pairs[index+1]['xml'].note_duration.xml_position - pairs[index]['xml'].note_duration.xml_position
         midi_ioi =  pairs[index+1]['midi'].start - pairs[index]['midi'].start
+        xml_length = pairs[index]['xml'].note_duration.duration
+        midi_length = pairs[index]['midi'].end - pairs[index]['midi'].start
 
         ioi = math.log( midi_ioi/total_length[1]  /  (xml_ioi/total_length[0]), 10)
+
+        articulation = xml_ioi/xml_length / (midi_ioi/midi_length)
     else:
         ioi = None
+        articulation = None
+    return ioi, articulation
 
-    return ioi
-
-def calcuate_articluation():
+def calcuate_articluation(pairs, index, ioi):
 
 
-    return 0
+    return
 
 def calculate_total_length(pairs):
     for i in range(len(pairs)):
         if not pairs[-i-1] == []:
             xml_length =  pairs[-i-1]['xml'].note_duration.xml_position - pairs[0]['xml'].note_duration.xml_position
             midi_length = pairs[-i-1]['midi'].start - pairs[0]['midi'].start
-            break
-    return (xml_length, midi_length)
+            return (xml_length, midi_length)
 
 def calculate_mean_velocity(pairs):
     sum = 0
@@ -226,8 +230,6 @@ def calculate_mean_velocity(pairs):
             length += 1
 
     return sum/float(length)
-
-
 
 def calculate_pitch_interval(xml_notes, index):
     if index < len(xml_notes)-1:
