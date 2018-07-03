@@ -362,6 +362,7 @@ class MusicXMLDocument(object):
                 current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
                 break
           note.note_duration.time_position = tempos[i].time_position + (note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
+          note.note_duration.seconds = note.note_duration.duration / current_tempo
 
 
 
