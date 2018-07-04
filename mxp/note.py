@@ -130,7 +130,7 @@ class Note(object):
     else:
       # Raise exception for unknown step (ex: 'Q')
       raise PitchStepParseException('Unable to parse pitch step ' + step)
-    pitch_class = (pitch_class + int(alter)) % 12
+    pitch_class = (pitch_class + int(alter))
     midi_pitch = (12 + pitch_class) + (int(octave) * 12)
     return midi_pitch
 
