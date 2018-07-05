@@ -4,8 +4,8 @@ import xml_matching
 import pickle
 
 folderDir = 'mxp/testdata/chopin10-3/'
-folderDir = 'chopin/Chopin_Polonaises/61/'
-artistName = 'CaiC09'
+# folderDir = 'chopin/Chopin_Polonaises/61/'
+artistName = 'Sun08'
 
 XMLDocument = MusicXMLDocument(folderDir + "xml.xml")
 melody_notes = xml_matching.extract_notes(XMLDocument, melody_only=True)
@@ -41,14 +41,33 @@ score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,sc
 
 
 
+measure_positions = xml_matching.extract_measure_position(XMLDocument)
+features = xml_matching.extract_perform_features(melody_notes, perform_pairs, measure_positions)
 
-# features = xml_matching.extract_perform_features(melody_notes, perform_pairs)
+for feature in features:
+    print(feature)
 
-# for feature in features:
-#     print(feature)
+ioi_list = []
+articul_list =[]
+loudness_list = []
+for feat in features:
+    if not feat['IOI_ratio'] == None:
+        ioi_list.append(feat['IOI_ratio'])
+        articul_list.append(feat['articulation'])
+        loudness_list.append(feat['loudness'])
 
+feature_list = [ioi_list, articul_list, loudness_list]
 
-chopin_pairs = xml_matching.load_entire_subfolder('chopin/')
+# ioi_list = [feat['IOI_ratio'] for feat in features ]
+
+new_midi = xml_matching.applyIOI(melody_notes, score_midi_notes, features, feature_list)
+
+# for note in new_midi:
+#     print(note)
+#
+xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid')
+
+# chopin_pairs = xml_matching.load_entire_subfolder('chopin/')
 # # print(chopin_pairs)
 # with open("pairs_entire.dat", "wb") as f:
 #     pickle.dump(chopin_pairs, f)

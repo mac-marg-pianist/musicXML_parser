@@ -3,6 +3,7 @@ import csv
 import math
 import os
 import midi_utils.midi_utils as midi_utils
+import pretty_midi
 from mxp import MusicXMLDocument
 
 
@@ -368,31 +369,98 @@ def binaryIndex(alist, item):
             while alist[midpoint+1] == item:
                 midpoint += 1
             return midpoint
-    return midpoint
+    return last
 
 
 
-def applyIOI(xml_notes, midi_notes, features, IOIratio):
+def applyIOI(xml_notes, midi_notes, features, feature_list):
+    IOIratio = feature_list[0]
+    articulation = feature_list[1]
+    loudness = feature_list[2]
     #len(features) always equal to len(xml_notes) by its definition
     xml_ioi_ratio_pairs = []
     ioi_index =0
-    for i in range(len(features)):
-        if not features[i]['IOI_ratio'] == None:
-            # [xml_position, time_position, ioi_ratio]
-            temp_pair = {'xml_pos': xml_notes[i].note_duration.xml_position, 'midi_pos' : xml_notes[i].note_duration.time_position, 'ioi': IOIratio[ioi_index]}
+    if not len(xml_notes) == len(IOIratio):
+        for i in range(len(features)):
+            if not features[i]['IOI_ratio'] == None:
+                # [xml_position, time_position, ioi_ratio]
+                temp_pair = {'xml_pos': xml_notes[i].note_duration.xml_position, 'midi_pos' : xml_notes[i].note_duration.time_position, 'ioi': IOIratio[ioi_index]}
+                xml_ioi_ratio_pairs.append(temp_pair)
+                ioi_index += 1
+        if not ioi_index  == len(IOIratio):
+            print('check ioi_index', ioi_index)
+    else:
+        for i in range(len(xml_notes)):
+            note = xml_notes[i]
+            temp_pair = {'xml_pos': note.note_duration.xml_position, 'midi_pos' : note.note_duration.time_position, 'ioi': IOIratio[i]}
             xml_ioi_ratio_pairs.append(temp_pair)
-            ioi_index += 1
-    if not ioi_index +1 == len(IOIratio):
-        print('check ioi_index')
+    # print(len(IOIratio), len(xml_ioi_ratio_pairs))
 
     default_tempo = xml_notes[0].state.qpm / 60 * xml_notes[0].state.divisions
-    previous_position = 0
-    for pair in xml_ioi_ratio_pairs:
-        note_length = pair['xml_pos'] - previous_position
-        tempo = default_tempo
-        note_length_second = note_length
+    default_velocity = 64
+
+    # in case the xml_position of first note is not 0
+    current_sec = (xml_ioi_ratio_pairs[0]['xml_pos'] - 0) / default_tempo
+    tempo_mapping_list = [ [xml_ioi_ratio_pairs[0]['midi_pos'] ] , [current_sec]]
+    for i in range(len(xml_ioi_ratio_pairs)-1):
+        pair = xml_ioi_ratio_pairs[i]
+        next_pair = xml_ioi_ratio_pairs[i+1]
+        note_length = next_pair['xml_pos'] - pair['xml_pos']
+        tempo_ratio =  1/ (10 ** pair['ioi'])
+        tempo = default_tempo * tempo_ratio
+        note_length_second = note_length / tempo
+        next_sec = current_sec + note_length_second
+        current_sec = next_sec
+        tempo_mapping_list[0].append( next_pair['midi_pos'] )
+        tempo_mapping_list[1].append( current_sec )
+
+    # print(tempo_mapping_list)
+    print(len(tempo_mapping_list[0]), len(articulation))
+
+    for note in midi_notes:
+        note = make_new_note(note, tempo_mapping_list[0], tempo_mapping_list[1], articulation, loudness, default_velocity)
+    return midi_notes
+
+def make_new_note(note, time_a, time_b, articulation, loudness, default_velocity):
+    index = binaryIndex(time_a, note.start)
+    new_onset = cal_new_onset(note.start, time_a, time_b)
+    temp_offset = cal_new_onset(note.end, time_a, time_b)
+    new_duration = (temp_offset-new_onset) * articulation[index]
+    new_offset = new_onset + new_duration
+    new_velocity = min([max([int(default_velocity * (10 ** loudness[index])) , 0]), 127])
+
+    note.start= new_onset
+    note.end = new_offset
+    note.velocity = new_velocity
+
+    return note
+
+def cal_new_onset(note_start, time_a, time_b):
+    index = binaryIndex(time_a, note_start)
+    time_org = time_a[index]
+    new_time = interpolation(note_start, time_a, time_b, index)
+
+    return new_time
 
 
-        default_second = pair[1]
-        applied_second =
 
+def interpolation(a, list1, list2, index):
+    if index == len(list1)-1:
+        index += -1
+
+    a1 = list1[index]
+    b1 = list2[index]
+    a2 = list1[index+1]
+    b2 = list2[index+1]
+    return b1+ (a-a1) / (a2-a1) * (b2 - b1)
+
+
+def save_midi_notes_as_piano_midi(midi_notes, output_name):
+    piano_midi = pretty_midi.PrettyMIDI()
+    piano_program = pretty_midi.instrument_name_to_program('Acoustic Grand Piano')
+    piano = pretty_midi.Instrument(program=piano_program)
+
+    for note in midi_notes:
+        piano.notes.append(note)
+    piano_midi.instruments.append(piano)
+    piano_midi.write(output_name)
