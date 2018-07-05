@@ -1,26 +1,30 @@
 from mxp import MusicXMLDocument
 import midi_utils.midi_utils as midi_utils
 import xml_matching
+import pickle
 
+folderDir = 'mxp/testdata/chopin10-3/'
+folderDir = 'chopin/Chopin_Polonaises/61/'
+artistName = 'CaiC09'
 
-XMLDocument = MusicXMLDocument("mxp/testdata/chopin10-3/xml.xml")
-melody_notes = xml_matching.extract_notes(XMLDocument, melody_only=False)
+XMLDocument = MusicXMLDocument(folderDir + "xml.xml")
+melody_notes = xml_matching.extract_notes(XMLDocument, melody_only=True)
 melody_notes.sort(key=lambda x: x.note_duration.time_position)
-score_midi = midi_utils.to_midi_zero("mxp/testdata/chopin10-3/midi.mid")
-perform_midi = midi_utils.to_midi_zero("mxp/testdata/chopin10-3/Sun08.mid")
+score_midi = midi_utils.to_midi_zero(folderDir + "midi.mid")
+perform_midi = midi_utils.to_midi_zero(folderDir + artistName + '.mid')
 score_midi_notes = score_midi.instruments[0].notes
 perform_midi_notes = perform_midi.instruments[0].notes
-corresp = xml_matching.read_corresp("mxp/testdata/chopin10-3/Sun08_infer_corresp.txt")
+corresp = xml_matching.read_corresp(folderDir + artistName + "_infer_corresp.txt")
 
 
-score_pairs, perform_pairs = xml_matching.match_xml_midi_perfrom(melody_notes,score_midi_notes, perform_midi_notes, corresp)
+score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,score_midi_notes, perform_midi_notes, corresp)
 
 
 # Check xml notes
-for i in range(len(melody_notes)-1):
-    # diff = (melody_notes[i+1].note_duration.time_position - melody_notes[i].note_duration.time_position) * 10000
-    # print(diff, melody_notes[i].note_duration.xml_position)
-    print(melody_notes[i].pitch, melody_notes[i].note_duration.xml_position,  melody_notes[i].note_duration.time_position)
+# for i in range(len(melody_notes)-1):
+#     # diff = (melody_notes[i+1].note_duration.time_position - melody_notes[i].note_duration.time_position) * 10000
+#     # print(diff, melody_notes[i].note_duration.xml_position)
+#     print(melody_notes[i].pitch, melody_notes[i].note_duration.xml_position,  melody_notes[i].note_duration.time_position)
 
 
 
@@ -39,6 +43,19 @@ for i in range(len(melody_notes)-1):
 
 
 # features = xml_matching.extract_perform_features(melody_notes, perform_pairs)
-#
+
 # for feature in features:
 #     print(feature)
+
+
+chopin_pairs = xml_matching.load_entire_subfolder('chopin/')
+# # print(chopin_pairs)
+# with open("pairs_entire.dat", "wb") as f:
+#     pickle.dump(chopin_pairs, f)
+
+# measure_position = xml_matching.extract_measure_position(XMLDocument)
+# print(measure_position)
+#
+# import numpy as np
+# test = np.asarray([[1,2,3], [4,5,6], [7,8,9], [10,11,12]])
+# print(test[0:2])

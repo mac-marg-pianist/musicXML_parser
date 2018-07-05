@@ -1,6 +1,10 @@
 from __future__ import division
 import csv
 import math
+import os
+import midi_utils.midi_utils as midi_utils
+from mxp import MusicXMLDocument
+
 
 def apply_tied_notes(xml_parsed_notes):
     tie_clean_list = []
@@ -105,7 +109,7 @@ def match_score_pair2perform(pairs, perform_midi, corresp_list):
         match_list.append(index_in_perform_midi)
     return match_list
 
-def match_xml_midi_perfrom(xml_notes, midi_notes, perform_notes, corresp):
+def match_xml_midi_perform(xml_notes, midi_notes, perform_notes, corresp):
     xml_notes = apply_tied_notes(xml_notes)
     # print(len(xml_notes))
     match_list = matchXMLtoMIDI(xml_notes, midi_notes)
@@ -131,7 +135,18 @@ def extract_notes(xml_Doc, melody_only = False):
         notes = delete_chord_notes_for_melody(notes)
 
     notes = apply_tied_notes(notes)
+    notes.sort(key=lambda x: x.note_duration.time_position)
     return notes
+
+def extract_measure_position(xml_Doc):
+    parts = xml_Doc.parts[0]
+    measure_positions = []
+
+    for measure in parts.measures:
+        # print(vars(measure))
+        measure_positions.append(measure.start_xml_position)
+
+    return measure_positions
 
 def delete_chord_notes_for_melody(melody_notes):
     note_onset_positions = list(set(note.note_duration.xml_position for note in melody_notes))
@@ -171,19 +186,29 @@ def find_normal_note(notes, grace_index):
 
 
 
-def extract_perform_features(xml_notes, pairs):
+def extract_perform_features(xml_notes, pairs, measure_positions):
     print(len(xml_notes), len(pairs))
     features = []
     velocity_mean = calculate_mean_velocity(pairs)
-    total_length_tuple = calculate_total_length(pairs)
-    print(total_length_tuple[0], total_length_tuple[1] )
-
+    # total_length_tuple = calculate_total_length(pairs)
+    # print(total_length_tuple[0], total_length_tuple[1] )
+    measure_seocnds = make_midi_measure_seconds(pairs, measure_positions)
     for i in range(len(xml_notes)):
+        note_position = xml_notes[i].note_duration.xml_position
+        measure_index = binaryIndex(measure_positions, note_position)
+        if measure_index+1 <len(measure_positions):
+            measure_length = measure_positions[measure_index+1] - measure_positions[measure_index]
+            measure_sec_length = measure_seocnds[measure_index+1] - measure_seocnds[measure_index]
+        else:
+            measure_length = measure_positions[measure_index] - measure_positions[measure_index-1]
+            measure_sec_length = measure_seocnds[measure_index] - measure_seocnds[measure_index-1]
+        length_tuple = (measure_length, measure_sec_length)
         feature ={}
         feature['pitch_interval'] = calculate_pitch_interval(xml_notes, i)
         feature['duration_ratio'] = calculate_duration_ratio(xml_notes, i)
+        feature['beat_position'] = (note_position-measure_positions[measure_index]) / measure_length
         if not pairs[i] == []:
-            feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, total_length_tuple)
+            feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, length_tuple)
             feature['loudness'] = math.log( pairs[i]['midi'].velocity / velocity_mean, 10)
         else:
             feature['IOI_ratio'] = None
@@ -198,9 +223,10 @@ def calculate_IOI_articulation(pairs, index, total_length):
     if index < len(pairs)-1 and not pairs[index+1] == [] :
         xml_ioi = pairs[index+1]['xml'].note_duration.xml_position - pairs[index]['xml'].note_duration.xml_position
         midi_ioi =  pairs[index+1]['midi'].start - pairs[index]['midi'].start
+        if midi_ioi<=0 or xml_ioi<=0 or total_length[1] <= 0  or total_length[0] <=0:
+            return None, None
         xml_length = pairs[index]['xml'].note_duration.duration
         midi_length = pairs[index]['midi'].end - pairs[index]['midi'].start
-
         ioi = math.log( midi_ioi/total_length[1]  /  (xml_ioi/total_length[0]), 10)
 
         articulation = xml_ioi/xml_length / (midi_ioi/midi_length)
@@ -240,7 +266,132 @@ def calculate_pitch_interval(xml_notes, index):
 
 def calculate_duration_ratio(xml_notes, index):
     if index < len(xml_notes)-1:
-        duration_ratio = math.log(xml_notes[index+1].note_duration.duration / float(xml_notes[index].note_duration.duration), 10)
+        duration_ratio = math.log(xml_notes[index+1].note_duration.duration / xml_notes[index].note_duration.duration, 10)
     else:
         duration_ratio = None
     return duration_ratio
+
+
+def load_entire_subfolder(path):
+    entire_pairs = []
+    midi_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(path) for f in filenames if
+              f == 'midi.mid']
+    for midifile in midi_list:
+        foldername = os.path.split(midifile)[0] + '/'
+        mxl_name = foldername + 'xml.mxl'
+        xml_name = foldername + 'xml.xml'
+        if os.path.isfile(mxl_name) and os.path.isfile(xml_name) :
+            print(foldername)
+            # piece_pairs = load_pairs_from_folder(foldername)
+            # entire_pairs.append(piece_pairs)
+
+    return entire_pairs
+
+def load_pairs_from_folder(path):
+    xml_name = path+'xml.xml'
+    score_midi_name = path+'midi.mid'
+
+    XMLDocument = MusicXMLDocument(xml_name)
+    xml_notes = extract_notes(XMLDocument, melody_only=True)
+    score_midi = midi_utils.to_midi_zero(score_midi_name)
+    score_midi_notes = score_midi.instruments[0].notes
+    match_list = matchXMLtoMIDI(xml_notes, score_midi_notes)
+    score_pairs = make_xml_midi_pair(xml_notes, score_midi_notes, match_list)
+    measure_positions = extract_measure_position(XMLDocument)
+    filenames = os.listdir(path)
+    # print(filenames)
+    perform_features_piece = []
+    for file in filenames:
+        if file[-18:] == '_infer_corresp.txt':
+            perf_name = file.split('_infer')[0]
+            perf_midi_name = path + perf_name + '.mid'
+            perf_midi = midi_utils.to_midi_zero(perf_midi_name)
+            perf_midi_notes= perf_midi.instruments[0].notes
+            corresp_name = path + file
+            corresp = read_corresp(corresp_name)
+
+            xml_perform_match = match_score_pair2perform(score_pairs, perf_midi_notes, corresp)
+            perform_pairs = make_xml_midi_pair(xml_notes, perf_midi_notes, xml_perform_match)
+
+            perform_features = extract_perform_features(xml_notes, perform_pairs, measure_positions)
+            perform_features_piece.append(perform_features)
+
+    return perform_features_piece
+
+
+def make_midi_measure_seconds(pairs, measure_positions):
+    xml_positions = []
+    pair_indexes = []
+    for i in range(len(pairs)):
+        if not pairs[i] == []:
+            xml_positions.append(pairs[i]['xml'].note_duration.xml_position)
+            pair_indexes.append(i)
+    # xml_positions = [pair['xml'].note_duration.xml_position for pair in pairs]
+    measure_seconds = []
+    for measure_start in measure_positions:
+        pair_index = pair_indexes[binaryIndex(xml_positions, measure_start)]
+        if pairs[pair_index]['xml'].note_duration.xml_position == measure_start:
+            measure_seconds.append(pairs[pair_index]['midi'].start)
+        else:
+            left_second = pairs[pair_index]['midi'].start
+            left_position = pairs[pair_index]['xml'].note_duration.xml_position
+            while pairs[pair_index+1] == []:
+                pair_index += 1
+            right_second = pairs[pair_index+1]['midi'].start
+            right_position = pairs[pair_index+1]['xml'].note_duration.xml_position
+
+            interpolated_second = left_second + (measure_start-left_position) / (right_position-left_position) * (right_second-left_second)
+            measure_seconds.append(interpolated_second)
+    return measure_seconds
+
+def binaryIndex(alist, item):
+    first = 0
+    last = len(alist)-1
+    midpoint = 0
+
+    if(item< alist[first]):
+        return 0
+
+    while first<last:
+        midpoint = (first + last)//2
+        currentElement = alist[midpoint]
+
+        if currentElement < item:
+            if alist[midpoint+1] > item:
+                return midpoint
+            else: first = midpoint +1;
+            if first == last and alist[last] > item:
+                return midpoint
+        elif currentElement > item:
+            last = midpoint -1
+        else:
+            while alist[midpoint+1] == item:
+                midpoint += 1
+            return midpoint
+    return midpoint
+
+
+
+def applyIOI(xml_notes, midi_notes, features, IOIratio):
+    #len(features) always equal to len(xml_notes) by its definition
+    xml_ioi_ratio_pairs = []
+    ioi_index =0
+    for i in range(len(features)):
+        if not features[i]['IOI_ratio'] == None:
+            # [xml_position, time_position, ioi_ratio]
+            temp_pair = [xml_notes[i].note_duration.xml_position,xml_notes[i].note_duration.time_position, IOIratio[ioi_index]]
+            xml_ioi_ratio_pairs.append(temp_pair)
+            ioi_index += 1
+    if not ioi_index +1 == len(IOIratio):
+        print('check ioi_index')
+
+    default_tempo = xml_notes[0].state.qpm / 60 * xml_notes[0].state.divisions
+    previous_position = 0
+    for pair in xml_ioi_ratio_pairs:
+        note_length = previous_position
+        note_length_second =
+
+
+        default_second = pair[1]
+        applied_second =
+
