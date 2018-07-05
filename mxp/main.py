@@ -68,6 +68,9 @@ class MusicXMLParserState(object):
     # This variable stores an instance of the Note class (defined below)
     self.previous_note = None
 
+    # Keep track of previous direction
+    self.previous_direction = None
+
     # Keep track of current transposition level in +/- semitones.
     self.transpose = 0
 
@@ -335,7 +338,6 @@ class MusicXMLDocument(object):
 
     for part in self.parts:
       for measure in part.measures:
-        print(measure.start_xml_position)
         for note in measure.notes:
           for i in range(len(tempos)):
             if i + 1 == len(tempos):

@@ -1,5 +1,8 @@
 from mxp import MusicXMLDocument
-XMLDocument = MusicXMLDocument("mxp/testdata/chopin.xml")
+
+XML_PATH = "mxp/testdata/chopin10-3/xml.xml"
+
+XMLDocument = MusicXMLDocument(XML_PATH)
 
 midi_resolution = XMLDocument.midi_resolution
 parts = XMLDocument.parts[0]
@@ -10,5 +13,5 @@ total_time_secs = XMLDocument.total_time_secs
 for i in range(len(parts.measures)):
   print("<=== Measure ===>", i)
   current = parts.measures[i].notes
-  print([x.pitch for x in current])
+  print([vars(x) for x in current])
   print(len([x.pitch for x in current]))
