@@ -91,6 +91,13 @@ class Direction(object):
         if previous_type in wedge_type_labels:
           self.type = {previous_type: wedge_type}
         else:
+          """Need to fix it later - 
+          <direction-type>
+            <wedge type="stop"/>
+          </direction-type>
+          still can't figure out wedge type 
+          Previous direction-type can be sth else.
+          """
           self.type = {'none': wedge_type}
 
   def _parse_words(self, xml_words):
