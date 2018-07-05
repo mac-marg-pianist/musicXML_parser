@@ -379,7 +379,7 @@ def applyIOI(xml_notes, midi_notes, features, IOIratio):
     for i in range(len(features)):
         if not features[i]['IOI_ratio'] == None:
             # [xml_position, time_position, ioi_ratio]
-            temp_pair = [xml_notes[i].note_duration.xml_position,xml_notes[i].note_duration.time_position, IOIratio[ioi_index]]
+            temp_pair = {'xml_pos': xml_notes[i].note_duration.xml_position, 'midi_pos' : xml_notes[i].note_duration.time_position, 'ioi': IOIratio[ioi_index]}
             xml_ioi_ratio_pairs.append(temp_pair)
             ioi_index += 1
     if not ioi_index +1 == len(IOIratio):
@@ -388,8 +388,9 @@ def applyIOI(xml_notes, midi_notes, features, IOIratio):
     default_tempo = xml_notes[0].state.qpm / 60 * xml_notes[0].state.divisions
     previous_position = 0
     for pair in xml_ioi_ratio_pairs:
-        note_length = previous_position
-        note_length_second =
+        note_length = pair['xml_pos'] - previous_position
+        tempo = default_tempo
+        note_length_second = note_length
 
 
         default_second = pair[1]
