@@ -9,7 +9,7 @@ import copy
 class Note(object):
   """Internal representation of a MusicXML <note> element."""
 
-  def __init__(self, xml_note, direction, state):
+  def __init__(self, xml_note, state):
     self.xml_note = xml_note
     self.voice = 1
     self.is_rest = False

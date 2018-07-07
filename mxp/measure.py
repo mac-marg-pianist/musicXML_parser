@@ -7,6 +7,7 @@ from mxp.time_signature import TimeSignature
 from mxp.key_signature import KeySignature
 from mxp.exception import MultipleTimeSignatureException
 from mxp.note import Note
+from mxp.direction import Direction
 
 class Measure(object):
   """Internal represention of the MusicXML <measure> element."""
@@ -14,6 +15,7 @@ class Measure(object):
   def __init__(self, xml_measure, state):
     self.xml_measure = xml_measure
     self.notes = []
+    self.directions = []
     self.chord_symbols = []
     self.tempos = []
     self.time_signature = None
@@ -35,7 +37,7 @@ class Measure(object):
   def _parse(self):
     """Parse the <measure> element."""
     # Create new direction
-    direction = []
+    #direction = []
     for child in self.xml_measure:
       if child.tag == 'attributes':
         self._parse_attributes(child)
@@ -44,23 +46,25 @@ class Measure(object):
       elif child.tag == 'barline':
         self._parse_barline(child)
       elif child.tag == 'direction':
-        # Append new direction
-        direction.append(child)
-        # Get tempo in <sound /> and update state tempo and time_position
+       # Get tempo in <sound /> and update state tempo and time_position
         self._parse_direction(child)
+        direction = Direction(child, self.state)
+        self.directions.append(direction)
+        self.state.previous_direction = direction
+
+
       elif child.tag == 'forward':
         self._parse_forward(child)
       elif child.tag == 'harmony':
         chord_symbol = ChordSymbol(child, self.state)
         self.chord_symbols.append(chord_symbol)
       elif child.tag == 'note':
-        # Add direction if find note 
-        note = Note(child, direction, self.state)
+         
+        note = Note(child, self.state)
         self.notes.append(note)
         # Keep track of current note as previous note for chord timings
         self.state.previous_note = note
-        # Make empty direction
-        direction = []
+
         # Sum up the MusicXML durations in voice 1 of this measure
         if note.voice == 1 and not note.is_in_chord:
           self.duration += note.note_duration.duration
@@ -117,7 +121,6 @@ class Measure(object):
             new_key %= -6
           self.key_signature.key = new_key
 
-        
       else:
         # Ignore other tag types because they are not relevant to mxp.
         pass
