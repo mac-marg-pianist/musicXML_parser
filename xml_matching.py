@@ -471,3 +471,34 @@ def save_midi_notes_as_piano_midi(midi_notes, output_name):
         piano.notes.append(note)
     piano_midi.instruments.append(piano)
     piano_midi.write(output_name)
+
+
+def extract_directions(xml_doc):
+    directions = []
+    for part in xml_doc.parts:
+        for measure in part.measures:
+            for direction in measure.directions:
+                directions.append(direction)
+
+    directions.sort(key=lambda x: x.xml_position)
+    for i in range(len(directions)):
+        dir = directions[i]
+        if dir.type.keys()[0] == "none":
+            for j in range(i):
+                prev_dir = directions[i-j]
+                prev_key = prev_dir.type.keys()[0]
+                # if prev_dir.type[prev_key] == "start":
+                #     dir.type[prev_key] = dir.type.pop("none")
+                #     print(dir.xml_position, dir.staff, prev_dir.staff)
+                #     break
+
+                if prev_dir.type.keys()[0] == "crescendo":
+                    dir.type["crescendo"] = dir.type.pop("none")
+                    print(dir.xml_position, dir.staff, prev_dir.staff)
+                    break
+                elif prev_dir.type.keys()[0] == "diminuendo":
+                    dir.type["diminuendo"] = dir.type.pop("none")
+                    print(dir.xml_position, dir.staff, prev_dir.staff)
+                    break
+
+    return directions
