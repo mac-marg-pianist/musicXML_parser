@@ -12,6 +12,7 @@ melody_notes = xml_matching.extract_notes(XMLDocument, melody_only=True)
 melody_notes.sort(key=lambda x: x.note_duration.time_position)
 score_midi = midi_utils.to_midi_zero(folderDir + "midi.mid")
 perform_midi = midi_utils.to_midi_zero(folderDir + artistName + '.mid')
+perform_midi = midi_utils.elongate_offset_by_pedal(perform_midi)
 score_midi_notes = score_midi.instruments[0].notes
 perform_midi_notes = perform_midi.instruments[0].notes
 corresp = xml_matching.read_corresp(folderDir + artistName + "_infer_corresp.txt")
@@ -45,32 +46,32 @@ measure_positions = xml_matching.extract_measure_position(XMLDocument)
 features = xml_matching.extract_perform_features(melody_notes, perform_pairs, measure_positions)
 
 for feature in features:
-    print(feature)
-
-ioi_list = []
-articul_list =[]
-loudness_list = []
-for feat in features:
-    if not feat['IOI_ratio'] == None:
-        ioi_list.append(feat['IOI_ratio'])
-        articul_list.append(feat['articulation'])
-        loudness_list.append(feat['loudness'])
-
-feature_list = [ioi_list, articul_list, loudness_list]
-
+    print(feature['articulation'])
+#
+# ioi_list = []
+# articul_list =[]
+# loudness_list = []
+# for feat in features:
+#     if not feat['IOI_ratio'] == None:
+#         ioi_list.append(feat['IOI_ratio'])
+#         articul_list.append(feat['articulation'])
+#         loudness_list.append(feat['loudness'])
+#
+# feature_list = [ioi_list, articul_list, loudness_list]
+#
 # ioi_list = [feat['IOI_ratio'] for feat in features ]
-
-new_midi = xml_matching.applyIOI(melody_notes, score_midi_notes, features, feature_list)
-
+#
+# new_midi = xml_matching.applyIOI(melody_notes, score_midi_notes, features, feature_list)
+#
 # for note in new_midi:
 #     print(note)
-#
-xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid')
 
-# chopin_pairs = xml_matching.load_entire_subfolder('chopin/')
-# # print(chopin_pairs)
-# with open("pairs_entire.dat", "wb") as f:
-#     pickle.dump(chopin_pairs, f)
+# xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid')
+
+chopin_pairs = xml_matching.load_entire_subfolder('chopin/')
+# print(chopin_pairs)
+with open("pairs_entire3.dat", "wb") as f:
+    pickle.dump(chopin_pairs, f, protocol=2)
 
 # measure_position = xml_matching.extract_measure_position(XMLDocument)
 # print(measure_position)
