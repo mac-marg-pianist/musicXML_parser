@@ -25,7 +25,8 @@ class Direction(object):
     """Parse the MusicXML <direction> element."""
     direction = self.xml_direction
     child = direction.find('direction-type').getchildren()[0]
-
+    staff = direction.find('staff')
+    self.staff = staff.text
     if child is not None:
       if child.tag == "dynamics":
         self._parse_dynamics(child)
@@ -107,3 +108,11 @@ class Direction(object):
       xml_wedge: XML element with tag type 'wedge'.
     """
     self.type = {'words': xml_words.text}
+
+  def __str__(self):
+    direction_string = '{type: ' + str(self.type)
+    direction_string += ', xml_position: ' + str(self.xml_position)
+    direction_string += ', staff: ' + str(self.staff) + '}'
+    return direction_string
+
+
