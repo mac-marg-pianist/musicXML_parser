@@ -1,41 +1,47 @@
-
-""" Recurrent Neural Network.
-A Recurrent Neural Network (LSTM) implementation example using TensorFlow library.
-This example is using the MNIST database of handwritten digits (http://yann.lecun.com/exdb/mnist/)
-Links:
-    [Long Short Term Memory](http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf)
-    [MNIST Dataset](http://yann.lecun.com/exdb/mnist/).
-Author: Aymeric Damien
-Project: https://github.com/aymericdamien/TensorFlow-Examples/
-"""
-
 from __future__ import print_function
+from __future__ import division
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 import tensorflow.contrib.keras as keras
 import numpy as np
 import math
-import matplotlib.pyplot as plt
 import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 import pickle
+import random
+import argparse
+import xml_matching
+import midi_utils.midi_utils as midi_utils
+from mxp import MusicXMLDocument
+
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-mode", "--sessMode", type=str, default='train', help="train or test")
+# parser.add_argument("-model", "--nnModel", type=str, default="cnn", help="cnn or fcn")
+parser.add_argument("-path", "--testPath", type=str, default="./mxp/testdata/chopin10-3/", help="folder path of test mat")
+# parser.add_argument("-tset", "--trainingSet", type=str, default="dataOneHot", help="training set folder path")
+args = parser.parse_args()
 
 # Training Parameters
-learning_rate = 0.00001
+learning_rate = 0.001
 # training_steps = 10000
-training_epochs = 70
-batch_size = 6
+training_epochs = 20
+batch_size = 4
 display_step = 200
-training_ratio = 0.9
+training_ratio = 0.8
 
 # Network Parameters
-num_input = 2
-timesteps = 50 # timesteps
-num_hidden = 128 # hidden layer num of features
+num_input = 3
+timesteps = 100 # timesteps
+num_hidden = 64 # hidden layer num of features
 num_output = 3 # loudness, articulation, ioi
 input_length = 11
 
 
-with open("pairs_data.dat", "rb") as f:
+with open("pairs_entire3.dat", "rb") as f:
     dataset = pickle.load(f)
 
 def make_windowed_data(features,input_length):
@@ -63,6 +69,9 @@ def make_windowed_data(features,input_length):
     # print(windowed_feature.shape)
     return windowed_feature
 
+
+
+
 complete_xy = []
 for piece in dataset:
     for perform in piece:
@@ -70,8 +79,8 @@ for piece in dataset:
         train_y = []
         for feature in perform:
             if not feature['IOI_ratio'] == None:
-                # train_x.append( [ feature['pitch_interval'],feature['duration_ratio'],feature['beat_position']  ] )
-                train_x.append( [ feature['pitch_interval'],feature['duration_ratio'] ] )
+                train_x.append( [ feature['pitch_interval'],feature['duration_ratio'],feature['beat_position']  ] )
+                # train_x.append( [ feature['pitch_interval'],feature['duration_ratio'] ] )
                 train_y.append([ feature['IOI_ratio'], feature['articulation'] ,feature['loudness'] ])
         # windowed_train_x = make_windowed_data(train_x, input_length )
         complete_xy.append([train_x, train_y])
@@ -96,8 +105,6 @@ means = [[],[]]
 stds = [[],[]]
 for i1 in (0, 1):
     for i2 in range(3):
-        if i1==0 and i2==2:
-            continue
         mean_value, std_value = get_mean_and_sd(complete_xy, i1, i2)
         means[i1].append(mean_value)
         stds[i1].append(std_value)
@@ -109,14 +116,14 @@ for performance in complete_xy:
         for sample in performance[index1]:
             new_sample = []
             for index2 in (0, 1, 2):
-                if index1 == 0 and index2 == 2:
-                    continue
                 new_sample.append((sample[index2]-means[index1][index2])/stds[index1][index2])
             complete_xy_normalized[-1][index1].append(new_sample)
 
 complete_xy_orig = complete_xy
 print(len(complete_xy), len(complete_xy))
 complete_xy = complete_xy_normalized
+
+random.shuffle(complete_xy)
 
 
 
@@ -134,13 +141,6 @@ test_xy = complete_xy[train_perf_num:]
 X = tf.placeholder("float", [None, timesteps, num_input])
 Y = tf.placeholder("float", [None, timesteps, num_output])
 
-# Define weights
-weights = {
-    'out': tf.Variable(tf.random_normal([num_hidden, num_output]))
-}
-biases = {
-    'out': tf.Variable(tf.random_normal([num_output]))
-}
 
 def frame_wise_projection(input, feature_dim, out_dim):
     with tf.variable_scope('projection') as scope:
@@ -152,184 +152,176 @@ def frame_wise_projection(input, feature_dim, out_dim):
         output = tf.squeeze(output, axis=2, name='output')
     return output
 
+
 def keras_frame_wise_projection(input, feature_dim, out_dim):
-    # input.shape [?, time_step, hidden_size]
-    fc_input = tf.reshape(input, (-1, input.shape[2]))
-    fc = tf.contrib.layers.fully_connected(fc_input, out_dim)
-    fc_reshaped = tf.reshape(fc, (-1, input.shape[1], out_dim))
-    return fc_reshaped
+    with tf.variable_scope('projection') as scope:
+        kernel = tf.get_variable('weight', shape=[1, feature_dim, 1, out_dim],
+                                 initializer=tf.contrib.layers.xavier_initializer())
+        conv = tf.nn.conv2d(input, kernel, [1, 1, 1, 1], padding='VALID')
+        biases = tf.get_variable('biases', [out_dim], initializer=tf.constant_initializer(0.0))
+        output = tf.nn.bias_add(conv, biases)
+        output = tf.squeeze(output, axis=2, name='output')
+    return output
 
-def RNN(x, weights, biases):
+def RNN(input, use_peepholes=False):
+    with tf.variable_scope('rnn'):
+        layers = 2
+        n_units = [num_hidden] * layers
 
-    # Prepare data shape to match `rnn` function requirements
-    # Current data input shape: (batch_size, timesteps, n_input)
-    # Required shape: 'timesteps' tensors list of shape (batch_size, n_input)
+        fw = []
+        bw = []
+        for n in xrange(layers):
+            with tf.variable_scope('layer_%d' % n):
+                fw_cell = tf.contrib.rnn.LSTMCell(n_units[n], forget_bias=1.0, use_peepholes=use_peepholes)
+                bw_cell = tf.contrib.rnn.LSTMCell(n_units[n], forget_bias=1.0, use_peepholes=use_peepholes)
+                # fw_cell = tf.contrib.rnn.DropoutWrapper(cell=fw_cell, output_keep_prob=keep_prob[0])
+                # bw_cell = tf.contrib.rnn.DropoutWrapper(cell=bw_cell, output_keep_prob=keep_prob[0])
+                fw.append(fw_cell)
+                bw.append(bw_cell)
 
-    # Unstack to get a list of 'timesteps' tensors of shape (batch_size, n_input)
-    x = tf.unstack(x, timesteps, 1)
-
-    # Define a lstm cell with tensorflow
-    lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0, name='lstm1')
-    lstm_cell2 = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0, activation=tf.nn.sigmoid)
-
-    # lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
-
-    # Get lstm cell output
-    outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
-    # outputs = tf.transpose(outputs, [1, 0, 2])
-    # print(outputs.shape)
-    print(outputs)
-    with tf.variable_scope('secondlayer') as scope:
-        outputs, states = rnn.static_rnn(lstm_cell2, outputs, dtype=tf.float32)
-    outputs = tf.transpose(outputs, [1, 0, 2])
-    outputs = tf.stack(outputs)
-    # num_layers = 2
-    # rnn_tuple_state = tuple(
-    #     [tf.nn.rnn_cell.LSTMStateTuple(state_per_layer_list[idx][0], state_per_layer_list[idx][1])
-    #      for idx in range(num_layers)]
-    # )
-    # cell = tf.nn.rnn_cell.LSTMCell(state_size, state_is_tuple=True)
-    # cell = tf.nn.rnn_cell.MultiRNNCell([cell] * 3, state_is_tuple=True)
-    # outputs, states = tf.nn.rnn(cell, x, initial_state=rnn_tuple_state)
-
-    # Linear activation, using rnn inner loop last output
-    # output_list =  [tf.matmul(output, weights['out']) + biases['out'] for output in outputs]
-    # hypothesis = tf.concat(output_list, 1)
-    print(outputs.shape)
+        outputs, state_fw, state_bw = \
+            tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
+                fw, bw, input, dtype='float32')
     expand = tf.expand_dims(outputs, axis =-1)
     print(expand.shape)
-    hypothesis = frame_wise_projection(expand, num_hidden , num_output)
-    # hypothesis2 = keras_frame_wise_projection(outputs, num_hidden, num_output)
+    hypothesis = frame_wise_projection(expand, 2*num_hidden , num_output)
     print(hypothesis.shape)
     # hypothesis =tf.matmul(outputs, weights['out']) + biases['out']
     cost = tf.reduce_mean(tf.square(hypothesis - Y))
-    optimizer= tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    train_op = optimizer.minimize(cost)
+    '''
+    gvs = optimizer.compute_gradients(cost)
+    capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+    train_op = optimizer.apply_gradients(capped_gvs)
+    '''
+    return hypothesis, cost, train_op, tf.train.Saver(max_to_keep=1)
 
-    return hypothesis, cost, optimizer, tf.train.Saver(max_to_keep=1)
-def FCN(x):
-    # reg = 0.0001
-    reg = 0.00001
-    X = tf.reshape(x, [-1, timesteps, num_input])
-    Fc1 = tf.contrib.layers.fully_connected(inputs=X, num_outputs=128, activation_fn=tf.nn.selu,
-                                            weights_regularizer=tf.contrib.layers.l2_regularizer(scale=reg))
-    Fc2 = tf.contrib.layers.fully_connected(inputs=Fc1, num_outputs=128, activation_fn=tf.nn.selu,
-                                            weights_regularizer=tf.contrib.layers.l2_regularizer(scale=reg))
-    Fc3 = tf.contrib.layers.fully_connected(inputs=Fc2, num_outputs=128, activation_fn=tf.nn.selu,
-                                            weights_regularizer=tf.contrib.layers.l2_regularizer(scale=reg))
-    Fc4 = tf.contrib.layers.fully_connected(inputs=Fc3, num_outputs=128, activation_fn=tf.nn.selu,
-                                            weights_regularizer=tf.contrib.layers.l2_regularizer(scale=reg))
-    # max_pool = tf.nn.max_pool(tf.expand_dims(tf.expand_dims(Fc5,1),-1),[1,1,32,1],[1,1,1,1], 'VALID')
-    # Fc6 = tf.contrib.layers.fully_connected(inputs=Fc5, num_outputs=16, activation_fn=tf.nn.selu, weights_regularizer = tf.contrib.layers.l2_regularizer(scale=reg))
-    # Fc7 = tf.contrib.layers.fully_connected(inputs=Fc6, num_outputs=16, activation_fn=tf.nn.selu, weights_regularizer = tf.contrib.layers.l2_regularizer(scale=reg))
-
-    hypothesis = tf.contrib.layers.fully_connected(inputs=Fc4, num_outputs=3, activation_fn=tf.nn.relu)
-    cost = tf.reduce_mean(tf.square(hypothesis - Y))
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
-
-    return hypothesis, cost, optimizer, tf.train.Saver(max_to_keep=1)
-
-
-hypothesis, cost, optimizer,saver = RNN(X, weights, biases)
-
-# logits = RNN(X, weights, biases)
-# print(logits.shape)
-# prediction = tf.nn.softmax(logits)
-# # result = logits
-#
-# # Define loss and optimizer
-# # loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
-#     # logits=logits, labels=Y))
-# loss_op = tf.reduce_mean(tf.square(logits - Y))
-# optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-# train_op = optimizer.minimize(loss_op)
-#
-# # Evaluate model (with test logits, for dropout to be disabled)
-# correct_pred = tf.equal(tf.argmax(prediction, 1), tf.argmax(Y, 1))
-# accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
-
-# Initialize the variables (i.e. assign their default value)
+hypothesis, cost, train_op, saver = RNN(X)
 init = tf.global_variables_initializer()
 
-
-
 # Start training
-with tf.Session() as sess:
 
-    # Run the initializer
-    sess.run(init)
+if args.sessMode == 'train':
+    with tf.Session() as sess:
 
-    for epoch in range(training_epochs):
-        for xy_tuple in train_xy:
+        # Run the initializer
+        sess.run(init)
+
+        for epoch in range(training_epochs):
+            loss_total = []
+            for xy_tuple in train_xy:
+                train_x = np.asarray(xy_tuple[0])
+                train_y = np.asarray(xy_tuple[1])
+                data_size = train_x.shape[0]
+                total_batch_num = int(math.ceil(data_size / (timesteps *batch_size )))
+                for step in range(total_batch_num-1):
+                    batch_x = train_x[step*batch_size*timesteps:(step+1)*batch_size*timesteps]
+                    batch_y = train_y[step*batch_size*timesteps:(step+1)*batch_size*timesteps]
+
+                    batch_x = batch_x.reshape((batch_size, timesteps, num_input))
+                    batch_y = batch_y.reshape((batch_size, timesteps, num_output ))
+
+                    loss , _ = sess.run([cost, train_op], feed_dict={X: batch_x, Y: batch_y})
+                    loss_total.append(loss)
+
+            print("Epoch " + str(epoch) + ", Epoch Loss= " + \
+                "{:.4f}".format(np.mean(loss_total)))
+
+        print("Optimization Finished!")
+        saver.save(sess, 'save_temp/save')
+
+#
+# elif args.sessMode == 'test':
+#     with tf.Session() as sess:
+        saver.restore(sess, 'save_temp/save')
+        # test
+        n_tuple=0
+        for xy_tuple in test_xy:
+            n_tuple +=1
+            print(n_tuple)
             train_x = np.asarray(xy_tuple[0])
             train_y = np.asarray(xy_tuple[1])
             data_size = train_x.shape[0]
-            total_batch_num = int(math.ceil(data_size / (timesteps *batch_size )))
+            total_batch_num = int(math.ceil(data_size / (timesteps * batch_size)))
             # print(data_size, batch_size, total_batch_num)
 
-            for step in range(total_batch_num-1):
-                batch_x = train_x[step*batch_size*timesteps:(step+1)*batch_size*timesteps]
-                batch_y = train_y[step*batch_size*timesteps:(step+1)*batch_size*timesteps]
+            for step in range(total_batch_num - 1):
+                batch_x = train_x[step * batch_size * timesteps:(step + 1) * batch_size * timesteps]
+                batch_y = train_y[step * batch_size * timesteps:(step + 1) * batch_size * timesteps]
 
                 # print(batch_x.shape, batch_y.shape)
                 batch_x = batch_x.reshape((batch_size, timesteps, num_input))
-                batch_y = batch_y.reshape((batch_size, timesteps, num_output ))
-                # Run optimization op (backprop)
 
-                # batch_x = np.zeros((batch_x.shape)) + step % 5 - 2
-                # batch_y = np.zeros((batch_y.shape)) + step % 5 - 2
-                # for s in range(batch_size):
-                #     batch_x[s,:,0] = list(range(timesteps))
-                #     batch_y[s,:,0] = list(range(timesteps))
-                #     batch_y[s, :, 0] = (batch_y[s,:,0])/50 - 1
-                #     batch_x[s, :, 0] = batch_x[s,:,0]/100 -0.5
+                prediction = sess.run(hypothesis, feed_dict={X: batch_x})
+                prediction = prediction.reshape((-1, num_output))
+                plt.figure(figsize=(10,7))
+                plt.subplot(211)
+                plt.plot(batch_y)
+                plt.subplot(212)
+                plt.plot(prediction)
+                plt.savefig('images/piece{:d},seg{:d}.png'.format(n_tuple, step))
 
-                # if step == 0:
-                #     print(batch_x, batch_y)
+        # Calculate accuracy for 128 mnist test images
+        # test_len = 128
+        # test_data = mnist.test.images[:test_len].reshape((-1, timesteps, num_input))
+        # test_label = mnist.test.labels[:test_len]
+        # print("Testing Accuracy:", \
+        #     sess.run(accuracy, feed_dict={X: test_data, Y: test_label}))
 
-                sess.run(optimizer, feed_dict={X: batch_x, Y: batch_y})
+else:
+    with tf.Session() as sess:
+        saver.restore(sess, 'save_temp/save')
+        #load test piece
+        path_name = args.testPath
+        xml_name = path_name + 'xml.xml'
+        midi_name = path_name + 'midi.mid'
+        xml_object = MusicXMLDocument(xml_name)
+        xml_notes = xml_matching.extract_notes(xml_object, melody_only=True)
+        midi_file = midi_utils.to_midi_zero(midi_name)
+        midi_notes = midi_file.instruments[0].notes
+        match_list = xml_matching.matchXMLtoMIDI(xml_notes, midi_notes)
+        score_pairs = xml_matching.make_xml_midi_pair(xml_notes, midi_notes, match_list)
+        measure_positions = xml_matching.extract_measure_position(xml_object)
+        features = xml_matching.extract_perform_features(xml_notes, score_pairs, measure_positions)
 
-            # if step % display_step == 0 or step == 1:
-                # Calculate batch loss and accuracy
-        loss, x, y = sess.run([cost, X,Y], feed_dict={X: batch_x, Y: batch_y})
-        # plt.plot(x[0,:,0])
-        # plt.plot(y[:,0,0]+1)
-        # plt.show()
-        # break
-        print("Epoch " + str(epoch) + ", Epoch Loss= " + \
-            "{:.4f}".format(loss))
+        test_x = []
+        for feat in features:
+            if not feat['pitch_interval'] == None:
+                test_x.append([  feat['pitch_interval'],feat['duration_ratio'],feat['beat_position'] ] )
+            else:
+                test_x.append( [0, 0, feat['beat_position'] ])
 
-    print("Optimization Finished!")
-
-
-    # test
-    perform = test_xy[0]
-    test_x = np.asarray(perform[0])
-    test_x = test_x[:(test_x.shape[0]//timesteps) * timesteps]
-    test_x = test_x.reshape((-1, timesteps, num_input))
-    print(test_x.shape)
-    test_y = np.asarray(perform[1])
-    # test_y = test_y.reshape((timesteps,batch_size,  num_output ))
-    # prediction = sess.run(hypothesis, feed_dict={X: test_x})
-    prediction = sess.run(hypothesis, feed_dict={X: test_x})
-    prediction = prediction.reshape((-1, num_output))
-    print(prediction.shape)
-
-    # Calculate accuracy for 128 mnist test images
-    # test_len = 128
-    # test_data = mnist.test.images[:test_len].reshape((-1, timesteps, num_input))
-    # test_label = mnist.test.labels[:test_len]
-    # print("Testing Accuracy:", \
-    #     sess.run(accuracy, feed_dict={X: test_data, Y: test_label}))
+        test_x = np.asarray(test_x)
 
 
-# print(test_y[:,0])
 
+        # test
+        timestep_quantize_num = int(math.ceil(test_x.shape[0] / timesteps))
+        padding_size = timestep_quantize_num * timesteps - test_x.shape[0]
+        print(test_x.shape)
+        test_x_padded = np.pad(test_x, ((0,padding_size), (0,0)), 'constant')
+        print(test_x_padded.shape)
+        # print(data_size, batch_size, total_batch_num)
 
-ground_truth_IOI = test_y[:,0]
-prediction_IOI = prediction[:,0]
-matplotlib.use('Agg')
-plt.plot(ground_truth_IOI)
-plt.hold(True)
-plt.plot(prediction_IOI)
-plt.show()
+            # print(batch_x.shape, batch_y.shape)
+        batch_x = test_x_padded.reshape((-1, timesteps, num_input))
 
+        prediction = sess.run(hypothesis, feed_dict={X: batch_x})
+        prediction = prediction.reshape((-1, num_output))
+        print(prediction.shape)
+        prediction = np.delete(prediction, range(prediction.shape[0]-padding_size,prediction.shape[0]), 0   )
+        print(prediction.shape)
+
+        prediction[:,0] *= stds[1][0]
+        prediction[:,1] *= stds[1][1]
+        prediction[:,2] *= stds[1][2]
+
+        prediction[:,0] += means[1][0]
+        prediction[:,1] += means[1][1]
+        prediction[:,2] += means[1][2]
+
+        prediction = np.transpose(prediction)
+        new_midi = xml_matching.applyIOI(xml_notes, midi_notes, features, prediction)
+
+        xml_matching.save_midi_notes_as_piano_midi(new_midi, path_name + 'performed_by_nn.mid')
