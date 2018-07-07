@@ -5,6 +5,8 @@ from operator import itemgetter
 from mxp import MusicXMLDocument
 from itertools import chain
 
+XML_PATH = "mxp/testdata/chopin10-3/xml.xml"
+
 class OnsetState(object):
   def __init__(self):
     self.current_onset = None
@@ -115,7 +117,6 @@ class Onset(OnsetState):
 
       self.crescendo = result[0]
       self.diminuendo = result[1]
-      print(result)
 
 
   def _map_to_wedge(self, notes):
@@ -170,7 +171,7 @@ class Main(OnsetState):
     self.readXML()
 
   def readXML(self):
-    XMLDocument = MusicXMLDocument("xml.xml")
+    XMLDocument = MusicXMLDocument(XML_PATH)
     parts = XMLDocument.parts[0]
     measure_num = len(parts.measures)
     for i in range(measure_num):
@@ -178,17 +179,25 @@ class Main(OnsetState):
       # Read all notes in a measure
       measure =  parts.measures[i]
       notes = measure.notes
-      # Sort notes by time position
-      #sorted_notes = sorted(notes, key=lambda note: note.note_duration.time_position)
-
-      print(">>> Measure", i+1)
-      print([vars(x) for x in notes])
-      # note_on_set_group = {k:[v for v in sorted_notes if v.note_duration.time_position == k] 
-      #                       for k, val in itertools.groupby(sorted_notes, lambda x: x.note_duration.time_position)}
       
-      # #print(note_on_set_group)
-      # keyList=sorted(note_on_set_group.keys())
-      # total = len(keyList)
+      # Sort notes by time position
+      sorted_notes = sorted(notes, key=lambda note: note.note_duration.time_position)
+
+      print(">>> Measure", i)
+      print([x.note_duration.xml_position for x in notes])
+
+      print([vars(x) for x in measure.directions])
+
+      note_on_set_group = {k:[v for v in sorted_notes if v.note_duration.time_position == k] 
+                            for k, val in itertools.groupby(sorted_notes, lambda x: x.note_duration.time_position)}
+                
+     # print([x for x in note_on_set_group])
+      keyList=sorted(note_on_set_group.keys())
+      total = len(keyList)
+      #print(keyList)
+
+      #print([x.direction for x in note_on_set_group.values()][0])
+      #print([x for x in note_on_set_group.values()
 
       # for index, (key, group) in enumerate(note_on_set_group.items()):
       #   if index > 0:
@@ -198,6 +207,7 @@ class Main(OnsetState):
       #   else:
       #     previous_onset = self.previous_onset
       #     on_set = Onset(group, previous_onset, index+1, total)
+      #   print(on_set)
 
 Main().readXML()
 
