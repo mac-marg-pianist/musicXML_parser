@@ -283,8 +283,8 @@ def load_entire_subfolder(path):
         xml_name = foldername + 'xml.xml'
         if os.path.isfile(mxl_name) and os.path.isfile(xml_name) :
             print(foldername)
-            # piece_pairs = load_pairs_from_folder(foldername)
-            # entire_pairs.append(piece_pairs)
+            piece_pairs = load_pairs_from_folder(foldername)
+            entire_pairs.append(piece_pairs)
 
     return entire_pairs
 
@@ -307,6 +307,8 @@ def load_pairs_from_folder(path):
             perf_name = file.split('_infer')[0]
             perf_midi_name = path + perf_name + '.mid'
             perf_midi = midi_utils.to_midi_zero(perf_midi_name)
+            #elongate offset
+            perf_midi = midi_utils.elongate_offset_by_pedal(perf_midi)
             perf_midi_notes= perf_midi.instruments[0].notes
             corresp_name = path + file
             corresp = read_corresp(corresp_name)
@@ -336,8 +338,11 @@ def make_midi_measure_seconds(pairs, measure_positions):
         else:
             left_second = pairs[pair_index]['midi'].start
             left_position = pairs[pair_index]['xml'].note_duration.xml_position
-            while pairs[pair_index+1] == []:
+            while pair_index+1<len(pairs) and pairs[pair_index+1] == []:
                 pair_index += 1
+            if pair_index+1 == len(pairs):
+                measure_seconds.append(max(measure_seconds[-1], left_second ))
+                continue
             right_second = pairs[pair_index+1]['midi'].start
             right_position = pairs[pair_index+1]['xml'].note_duration.xml_position
 
@@ -370,6 +375,8 @@ def binaryIndex(alist, item):
                 midpoint += 1
             return midpoint
     return last
+
+
 
 
 
