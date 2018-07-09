@@ -500,7 +500,115 @@ def extract_directions(xml_doc):
 
     return directions
 
+def merge_start_end_of_direction(directions):
+    for i in range(len(directions)):
+        dir = directions[i]
+        type_name = dir.type.keys()[0]
+        if type_name in ['crescendo', 'diminuendo', 'pedal'] and dir.type[type_name] == "stop":
+            for j in range(i):
+                prev_dir = directions[i-j]
+                prev_type_name = prev_dir.type.keys()[0]
+                if type_name == prev_type_name and prev_dir.type[prev_type_name] == "start" and dir.staff == prev_dir.staff:
+                    prev_dir.end_xml_position = dir.xml_position
+                    break
+    for dir in directions:
+        type_name = dir.type.keys()[0]
+        if type_name in ['crescendo', 'diminuendo', 'pedal'] and dir.type[type_name] == "stop":
+            print(dir)
+            directions.remove(dir)
+    return directions
+
 
 def apply_directions_to_notes(xml_notes, directions):
+    absolute_dynamics, relative_dynamics = get_dynamics(directions)
+    absolute_dynamics_position = [dyn.xml_position for dyn in absolute_dynamics]
+    # for dyn in absolute_dynamics:
+    #     print(dyn)
 
-    pass
+    for note in xml_notes:
+        index = binaryIndex(absolute_dynamics_position, note.note_duration.xml_position)
+        note.dynamic.absolute = absolute_dynamics[index].type['dynamic']
+
+        # have to improve algorithm
+        for rel in relative_dynamics:
+            if note.note_duration.xml_position >= rel.xml_position and note.note_duration.xml_position <= rel.end_xml_position:
+                note.dynamic.relative.append(rel)
+
+    return xml_notes
+
+
+def extract_directions_by_keywords(directions, keywords):
+    sub_directions =[]
+
+    for dir in directions:
+        if dir.type.keys()[0] in keywords:
+            sub_directions.append(dir)
+        elif dir.type.keys()[0] == 'words' and dir.type['words'] in keywords:
+            sub_directions.append(dir)
+        elif dir.type.keys()[0] == 'words' and dir.type['words'].split('sempre ')[-1] in keywords:
+            dir.type['dynamic'] = dir.type.pop('words')
+            dir.type['dynamic'] = dir.type['dynamic'].split('sempre ')[-1]
+            sub_directions.append(dir)
+        elif dir.type.keys()[0] == 'words' and dir.type['words'].split('subito ')[-1] in keywords:
+            dir.type['dynamic'] = dir.type.pop('words')
+            dir.type['dynamic'] = dir.type['dynamic'].split('subito ')[-1]
+            sub_directions.append(dir)
+
+    return sub_directions
+
+
+def get_dynamics(directions):
+    absolute_dynamics_keywords = ['dynamic', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff']
+    relative_dynamics_keywords = ['crescendo', 'diminuendo', 'cresc.', 'dim.']
+    absolute_dynamics = extract_directions_by_keywords(directions, absolute_dynamics_keywords)
+    relative_dynamics = extract_directions_by_keywords(directions, relative_dynamics_keywords)
+    for abs in absolute_dynamics:
+        if abs.type['dynamic'] in ['sf', 'fz', 'sfz']:
+            relative_dynamics.append(abs)
+            absolute_dynamics.remove(abs)
+
+    relative_dynamics.sort(key=lambda x:x.xml_position)
+    relative_dynamics = merge_start_end_of_direction(relative_dynamics)
+    absolute_dynamics_position = [dyn.xml_position for dyn in absolute_dynamics]
+    relative_dynamics_position = [dyn.xml_position for dyn in relative_dynamics]
+
+    for rel in relative_dynamics:
+        index = binaryIndex(absolute_dynamics_position, rel.xml_position)
+        rel.previous_dynamic = absolute_dynamics[index].type['dynamic']
+        if rel.type.keys()[0] == 'dynamic': # sf, fz, sfz
+            rel.end_xml_position = rel.xml_position
+        if index+1 < len(absolute_dynamics):
+            rel.next_dynamic = absolute_dynamics[index+1].type['dynamic']
+            if not hasattr(rel, 'end_xml_position'):
+                rel.end_xml_position = absolute_dynamics_position[index+1]
+
+    return absolute_dynamics, relative_dynamics
+
+
+# def get_tempos(directions):
+#     absolute_tempos_keywords = ['dynamic', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff']
+#     relative_tempos_keywords = ['crescendo', 'diminuendo', 'cresc.', 'dim.']
+#     absolute_dynamics = extract_directions_by_keywords(directions, absolute_tempos_keywords)
+#     relative_dynamics = extract_directions_by_keywords(directions, relative_tempos_keywords)
+#     for abs in absolute_dynamics:
+#         if abs.type['dynamic'] in ['sf', 'fz', 'sfz']:
+#             relative_dynamics.append(abs)
+#             absolute_dynamics.remove(abs)
+#
+#     relative_dynamics.sort(key=lambda x: x.xml_position)
+#     relative_dynamics = merge_start_end_of_direction(relative_dynamics)
+#     absolute_dynamics_position = [dyn.xml_position for dyn in absolute_dynamics]
+#     relative_dynamics_position = [dyn.xml_position for dyn in relative_dynamics]
+#
+#     for rel in relative_dynamics:
+#         index = binaryIndex(absolute_dynamics_position, rel.xml_position)
+#         rel.previous_dynamic = absolute_dynamics[index].type['dynamic']
+#         if rel.type.keys()[0] == 'dynamic':  # sf, fz, sfz
+#             rel.end_xml_position = rel.xml_position
+#         if index + 1 < len(absolute_dynamics):
+#             rel.next_dynamic = absolute_dynamics[index + 1].type['dynamic']
+#             if not hasattr(rel, 'end_xml_position'):
+#                 rel.end_xml_position = absolute_dynamics_position[index + 1]
+#         print (rel)
+#
+#     return absolute_dynamics, relative_dynamics
