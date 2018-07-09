@@ -40,13 +40,30 @@ score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,sc
 #         print('XML Note pitch:', pair['xml'].pitch , ' and time: ', pair['xml'].note_duration.time_position , '-- MIDI: ', pair['midi'])
 # print('Number of non matched XML notes: ', non_matched_count)
 
+directions = xml_matching.extract_directions(XMLDocument)
+
+# for dir in directions:
+#     # print(dir)
+#     if not dir.type == None and dir.type.keys()[0] == 'words':
+#         # print(dir)
+#         pass
+
+melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
+
+for note in melody_notes:
+    print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute)
+    if not note.dynamic.relative == []:
+        for rel in note.dynamic.relative:
+            print(rel)
 
 
-measure_positions = xml_matching.extract_measure_position(XMLDocument)
-features = xml_matching.extract_perform_features(melody_notes, perform_pairs, measure_positions)
 
-for feature in features:
-    print(feature['articulation'])
+
+# measure_positions = xml_matching.extract_measure_position(XMLDocument)
+# features = xml_matching.extract_perform_features(melody_notes, perform_pairs, measure_positions)
+#
+# for feature in features:
+#     print(feature['articulation'])
 #
 # ioi_list = []
 # articul_list =[]
@@ -68,14 +85,10 @@ for feature in features:
 
 # xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid')
 
-chopin_pairs = xml_matching.load_entire_subfolder('chopin/')
-# print(chopin_pairs)
-with open("pairs_entire3.dat", "wb") as f:
-    pickle.dump(chopin_pairs, f, protocol=2)
 
-# measure_position = xml_matching.extract_measure_position(XMLDocument)
-# print(measure_position)
-#
-# import numpy as np
-# test = np.asarray([[1,2,3], [4,5,6], [7,8,9], [10,11,12]])
-# print(test[0:2])
+# load and save data
+# chopin_pairs = xml_matching.load_entire_subfolder('chopin/')
+# # print(chopin_pairs)
+# with open("pairs_entire3.dat", "wb") as f:
+#     pickle.dump(chopin_pairs, f, protocol=2)
+
