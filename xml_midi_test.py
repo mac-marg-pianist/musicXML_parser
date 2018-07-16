@@ -11,14 +11,14 @@ XMLDocument = MusicXMLDocument(folderDir + "xml.xml")
 melody_notes = xml_matching.extract_notes(XMLDocument, melody_only=True)
 melody_notes.sort(key=lambda x: x.note_duration.time_position)
 score_midi = midi_utils.to_midi_zero(folderDir + "midi.mid")
-perform_midi = midi_utils.to_midi_zero(folderDir + artistName + '.mid')
-perform_midi = midi_utils.elongate_offset_by_pedal(perform_midi)
+# perform_midi = midi_utils.to_midi_zero(folderDir + artistName + '.mid')
+# perform_midi = midi_utils.elongate_offset_by_pedal(perform_midi)
 score_midi_notes = score_midi.instruments[0].notes
-perform_midi_notes = perform_midi.instruments[0].notes
-corresp = xml_matching.read_corresp(folderDir + artistName + "_infer_corresp.txt")
-
-
-score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,score_midi_notes, perform_midi_notes, corresp)
+# perform_midi_notes = perform_midi.instruments[0].notes
+# corresp = xml_matching.read_corresp(folderDir + artistName + "_infer_corresp.txt")
+#
+#
+# score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,score_midi_notes, perform_midi_notes, corresp)
 
 
 # Check xml notes
@@ -41,6 +41,15 @@ score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,sc
 # print('Number of non matched XML notes: ', non_matched_count)
 
 directions = xml_matching.extract_directions(XMLDocument)
+for dir in directions:
+    print(dir)
+melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
+
+# for note in melody_notes:
+#     print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute)
+#     if not note.dynamic.relative == []:
+#         for rel in note.dynamic.relative:
+#             print(rel)
 
 # for dir in directions:
 #     # print(dir)
@@ -48,13 +57,7 @@ directions = xml_matching.extract_directions(XMLDocument)
 #         # print(dir)
 #         pass
 
-melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
 
-for note in melody_notes:
-    print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute)
-    if not note.dynamic.relative == []:
-        for rel in note.dynamic.relative:
-            print(rel)
 
 
 
