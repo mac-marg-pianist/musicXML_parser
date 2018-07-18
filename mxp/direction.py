@@ -36,6 +36,11 @@ class Direction(object):
         self._parse_wedge(child) 
       elif child.tag == "words":
         self._parse_words(child)
+      elif child.tag=='octave-shift':
+        self._parse_octave_shift(child)
+      elif child.tag=='metronome':
+        self._parse_metronome(child)
+
 
   def _parse_pedal(self, xml_pedal):
     """Parse the MusicXML <pedal> element.
@@ -108,6 +113,19 @@ class Direction(object):
       xml_wedge: XML element with tag type 'wedge'.
     """
     self.type = {'words': xml_words.text}
+
+
+  def _parse_octave_shift(self, xml_shift):
+    """Parse the MusicXML <octave-shift> element.
+
+    """
+    self.type = {'octave-shift': xml_shift.attrib['type'], 'size':  xml_shift.attrib['size']}
+
+  def _parse_metronome(self, xml_metronome):
+    """Parse the MusicXML <metronome> element.
+
+    """
+    self.type = {'beat-unit': xml_metronome.find('beat-unit'), 'per-minute': xml_metronome.find('per-minute')}
 
   def __str__(self):
     direction_string = '{type: ' + str(self.type)

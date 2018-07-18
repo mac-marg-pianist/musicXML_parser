@@ -3,7 +3,7 @@ import midi_utils.midi_utils as midi_utils
 import xml_matching
 import pickle
 
-folderDir = 'mxp/testdata/chopin10-3/'
+folderDir = 'mxp/testdata/chopinBallade1/'
 # folderDir = 'chopin/Chopin_Polonaises/61/'
 artistName = 'Sun08'
 
@@ -40,13 +40,13 @@ score_midi_notes = score_midi.instruments[0].notes
 #         print('XML Note pitch:', pair['xml'].pitch , ' and time: ', pair['xml'].note_duration.time_position , '-- MIDI: ', pair['midi'])
 # print('Number of non matched XML notes: ', non_matched_count)
 
-directions = xml_matching.extract_directions(XMLDocument)
-for dir in directions:
-    print(dir)
-melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
+# directions = xml_matching.extract_directions(XMLDocument)
+# for dir in directions:
+#     print(dir, dir.type)
+# melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
 
 # for note in melody_notes:
-#     print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute)
+#     print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo.absolute)
 #     if not note.dynamic.relative == []:
 #         for rel in note.dynamic.relative:
 #             print(rel)
@@ -57,8 +57,9 @@ melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
 #         # print(dir)
 #         pass
 
-
-
+words = xml_matching.get_all_words_from_folders('chopin/')
+for wrd in words:
+    print (wrd)
 
 
 
