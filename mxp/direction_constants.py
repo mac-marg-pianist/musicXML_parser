@@ -7,6 +7,9 @@
   4) wedge                 # 'crescendo' or 'diminuendo' or 'stop' or None
   5) words                 # string e.g)  Andantino
   6) velocity              # integer
+  7) octave-shift
+  8) metronome
+
 
 """
 
@@ -16,5 +19,7 @@ DIRECTION_TYPES = [
   'tempo',
   'wedge',
   'words',
-  'velocity'
+  'velocity',
+  'octave-shift',
+  'metronome'
 ]
