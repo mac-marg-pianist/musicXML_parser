@@ -5,6 +5,8 @@ from mxp.exception import UnpitchedNoteException, PitchStepParseException
 from mxp.notations import Notations
 from mxp.note_duration import NoteDuration
 from mxp.note_dynamic import NoteDynamic
+from mxp.note_dynamic import NoteTempo
+
 import copy
 
 class Note(object):
@@ -23,6 +25,7 @@ class Note(object):
     self.state = copy.copy(state)
     self.note_notations = Notations()
     self.dynamic = NoteDynamic()
+    self.tempo = NoteTempo()
     self._parse()
 
 
