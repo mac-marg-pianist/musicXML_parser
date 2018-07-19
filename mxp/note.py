@@ -4,6 +4,9 @@ import zipfile
 from mxp.exception import UnpitchedNoteException, PitchStepParseException
 from mxp.notations import Notations
 from mxp.note_duration import NoteDuration
+from mxp.note_dynamic import NoteDynamic
+from mxp.note_dynamic import NoteTempo
+
 import copy
 
 class Note(object):
@@ -21,6 +24,8 @@ class Note(object):
     self.note_duration = NoteDuration(state)
     self.state = copy.copy(state)
     self.note_notations = Notations()
+    self.dynamic = NoteDynamic()
+    self.tempo = NoteTempo()
     self._parse()
 
 
@@ -130,7 +135,7 @@ class Note(object):
     else:
       # Raise exception for unknown step (ex: 'Q')
       raise PitchStepParseException('Unable to parse pitch step ' + step)
-    pitch_class = (pitch_class + int(alter)) % 12
+    pitch_class = (pitch_class + int(alter))
     midi_pitch = (12 + pitch_class) + (int(octave) * 12)
     return midi_pitch
 

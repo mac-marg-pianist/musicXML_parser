@@ -10,12 +10,14 @@ class Direction(object):
   4) wedge                 # 'crescendo' or 'diminuendo' or 'stop' or None
   5) words                 # string e.g)  Andantino
   6) velocity              # integer
+  7) octave-shift
+  8) metronome
 
   It parses the standard of the marking point of note.
   """
   def __init__(self, xml_direction, state):
     self.xml_direction = xml_direction
-    self.type = None
+    self.type = {'type': None, 'content': None}
     self.state = copy.copy(state)
     self._parse()
     self.time_position = state.time_position
@@ -25,7 +27,8 @@ class Direction(object):
     """Parse the MusicXML <direction> element."""
     direction = self.xml_direction
     child = direction.find('direction-type').getchildren()[0]
-
+    staff = direction.find('staff')
+    self.staff = staff.text
     if child is not None:
       if child.tag == "dynamics":
         self._parse_dynamics(child)
@@ -35,6 +38,11 @@ class Direction(object):
         self._parse_wedge(child) 
       elif child.tag == "words":
         self._parse_words(child)
+      elif child.tag=='octave-shift':
+        self._parse_octave_shift(child)
+      elif child.tag=='metronome':
+        self._parse_metronome(child)
+
 
   def _parse_pedal(self, xml_pedal):
     """Parse the MusicXML <pedal> element.
@@ -43,7 +51,7 @@ class Direction(object):
       xml_pedal: XML element with tag type 'pedal'.
     """
     pedal = xml_pedal.attrib['type']
-    self.type = {'pedal': pedal}
+    self.type = {'type': 'pedal', 'content': pedal}
 
   def _parse_sound(self, xml_direction):
     """Parse the MusicXML <sound> element.
@@ -56,11 +64,11 @@ class Direction(object):
       attrib = sound_tag.attrib
       if 'dynamics' in attrib:
         velocity = attrib['dynamics']
-        self.type = {'velocity': velocity}
+        self.type = {'type':'velocity', 'content': velocity}
 
       elif 'tempo' in attrib:
         tempo = attrib['tempo']
-        self.type = {'tempo': tempo}
+        self.type = {'type':'tempo', 'content': tempo}
 
   def _parse_dynamics(self, xml_dynamics):
     """Parse the MusicXML <dynamics> element.
@@ -69,7 +77,7 @@ class Direction(object):
       xml_dynamics: XML element with tag type 'dynamics'.
     """
     dynamic = xml_dynamics.getchildren()[0].tag
-    self.type = {'dynamic': dynamic}
+    self.type = {'type':'dynamic', 'content': dynamic}
 
   def _parse_wedge(self, xml_wedge):
     """Parse the MusicXML <wedge> element.
@@ -82,14 +90,14 @@ class Direction(object):
 
     if wedge_type in wedge_type_labels:
       # Add "start" at the point of a wedge starting point
-      self.type = {wedge_type: 'start'}
+      self.type = {'type':wedge_type, 'content': 'start'}
 
     else:
       if wedge_type == 'stop':
-        previous_type = list(self.state.previous_direction.type.keys())[0]
+        previous_type = list(self.state.previous_direction.type['type'])[0]
 
         if previous_type in wedge_type_labels:
-          self.type = {previous_type: wedge_type}
+          self.type = {'type':previous_type, 'content': wedge_type}
         else:
           """Need to fix it later - 
           <direction-type>
@@ -98,7 +106,7 @@ class Direction(object):
           still can't figure out wedge type 
           Previous direction-type can be sth else.
           """
-          self.type = {'none': wedge_type}
+          self.type = {'type':'none', 'content': wedge_type}
 
   def _parse_words(self, xml_words):
     """Parse the MusicXML <words> element.
@@ -106,4 +114,25 @@ class Direction(object):
     Args:
       xml_wedge: XML element with tag type 'wedge'.
     """
-    self.type = {'words': xml_words.text}
+    self.type = {'type':'words', 'content': xml_words.text}
+
+
+  def _parse_octave_shift(self, xml_shift):
+    """Parse the MusicXML <octave-shift> element.
+
+    """
+    self.type = {'type': 'octave-shift', 'content': xml_shift.attrib['type'], 'size':  xml_shift.attrib['size']}
+
+  def _parse_metronome(self, xml_metronome):
+    """Parse the MusicXML <metronome> element.
+
+    """
+    self.type = {'type':'metronome', 'content': xml_metronome.find('per-minute'), 'beat-unit': xml_metronome.find('beat-unit')}
+
+  def __str__(self):
+    direction_string = '{type: ' + str(self.type['type']) + ' - ' + str(self.type['content'].encode('utf-8'))
+    direction_string += ', xml_position: ' + str(self.xml_position)
+    direction_string += ', staff: ' + str(self.staff) + '}'
+    return direction_string
+
+
