@@ -114,7 +114,7 @@ class Direction(object):
     Args:
       xml_wedge: XML element with tag type 'wedge'.
     """
-    self.type = {'type':'words', 'content': xml_words.text}
+    self.type = {'type':'words', 'content': xml_words.text.encode('utf-8')}
 
 
   def _parse_octave_shift(self, xml_shift):
@@ -130,7 +130,7 @@ class Direction(object):
     self.type = {'type':'metronome', 'content': xml_metronome.find('per-minute'), 'beat-unit': xml_metronome.find('beat-unit')}
 
   def __str__(self):
-    direction_string = '{type: ' + str(self.type['type']) + ' - ' + str(self.type['content'].encode('utf-8'))
+    direction_string = '{type: ' + str(self.type['type']) + ' - ' + str(self.type['content'])
     direction_string += ', xml_position: ' + str(self.xml_position)
     direction_string += ', staff: ' + str(self.staff) + '}'
     return direction_string

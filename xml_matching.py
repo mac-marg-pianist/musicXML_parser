@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from __future__ import division
 import csv
 import math
@@ -40,8 +43,7 @@ def matchXMLtoMIDI(xml_notes, midi_notes):
         note_pitch = note.pitch[1]
         temp_list = [{'index': index, 'midi_note': midi_note} for index, midi_note in enumerate(midi_notes) if abs(midi_note.start - note_start) < 0.1 and midi_note.pitch == note_pitch]
         candidates_list.append(temp_list)
-        # print(temp_list)
-        # print(note_start)
+
 
     for candidates in candidates_list:
         if len(candidates) ==1:
@@ -112,7 +114,6 @@ def match_score_pair2perform(pairs, perform_midi, corresp_list):
 
 def match_xml_midi_perform(xml_notes, midi_notes, perform_notes, corresp):
     xml_notes = apply_tied_notes(xml_notes)
-    # print(len(xml_notes))
     match_list = matchXMLtoMIDI(xml_notes, midi_notes)
     score_pairs = make_xml_midi_pair(xml_notes, midi_notes, match_list)
     xml_perform_match = match_score_pair2perform(score_pairs, perform_notes, corresp)
@@ -144,7 +145,6 @@ def extract_measure_position(xml_Doc):
     measure_positions = []
 
     for measure in parts.measures:
-        # print(vars(measure))
         measure_positions.append(measure.start_xml_position)
 
     return measure_positions
@@ -300,7 +300,6 @@ def load_pairs_from_folder(path):
     score_pairs = make_xml_midi_pair(xml_notes, score_midi_notes, match_list)
     measure_positions = extract_measure_position(XMLDocument)
     filenames = os.listdir(path)
-    # print(filenames)
     perform_features_piece = []
     for file in filenames:
         if file[-18:] == '_infer_corresp.txt':
@@ -513,10 +512,13 @@ def merge_start_end_of_direction(directions):
                 if type_name == prev_type_name and prev_dir.type['content'] == "start" and dir.staff == prev_dir.staff:
                     prev_dir.end_xml_position = dir.xml_position
                     break
+    dir_dummy = []
     for dir in directions:
         type_name = dir.type['type']
-        if type_name in ['crescendo', 'diminuendo', 'pedal'] and dir.type['content'] == "stop":
-            directions.remove(dir)
+        if type_name in ['crescendo', 'diminuendo', 'pedal'] and dir.type['content'] != "stop":
+            # directions.remove(dir)
+            dir_dummy.append(dir)
+    directions = dir_dummy
     return directions
 
 
@@ -525,7 +527,7 @@ def apply_directions_to_notes(xml_notes, directions):
     absolute_dynamics_position = [dyn.xml_position for dyn in absolute_dynamics]
     # for dyn in absolute_dynamics:
     #     print(dyn)
-    absolute_tempos, relative_tempos = get_tempos(directions)
+    absolute_tempos = get_tempos(directions)
     absolute_tempos_position = [tmp.xml_position for tmp in absolute_tempos]
     for tmp in absolute_tempos:
         print(tmp)
@@ -552,12 +554,12 @@ def extract_directions_by_keywords(directions, keywords):
         if dir.type['type'] in keywords:
             sub_directions.append(dir)
         elif dir.type['type'] == 'words':
-            if dir.type['content'].lower() in keywords:
+            if dir.type['content'].replace(',', '').replace('.', '').decode('utf-8').lower() in keywords:
                 sub_directions.append(dir)
             else:
-                word_split = dir.type['content'].split(' ')
+                word_split = dir.type['content'].replace(',', ' ').replace('.', ' ').split(' ')
                 for w in word_split:
-                    if w.lower() in keywords:
+                    if w.decode('utf-8').lower() in keywords:
                         # dir.type[keywords[0]] = dir.type.pop('words')
                         # dir.type[keywords[0]] = w
                         sub_directions.append(dir)
@@ -575,13 +577,17 @@ def extract_directions_by_keywords(directions, keywords):
 
 def get_dynamics(directions):
     absolute_dynamics_keywords = ['dynamic', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'fp']
-    relative_dynamics_keywords = ['rel_dynamic', 'crescendo', 'diminuendo', 'cresc.', 'dim.', 'dimin.' 'sotto voce', 'mezza voce']
+    relative_dynamics_keywords = ['rel_dynamic', 'crescendo', 'diminuendo', 'cresc', 'dim', 'dimin' 'sotto voce', 'mezza voce', 'sf', 'fz', 'sfz', 'sffz']
     absolute_dynamics = extract_directions_by_keywords(directions, absolute_dynamics_keywords)
     relative_dynamics = extract_directions_by_keywords(directions, relative_dynamics_keywords)
+    abs_dynamic_dummy = []
     for abs in absolute_dynamics:
-        if abs.type['content'] in ['sf', 'fz', 'sfz']:
+        if abs.type['content'] in ['sf', 'fz', 'sfz', 'sffz']:
             relative_dynamics.append(abs)
-            absolute_dynamics.remove(abs)
+        else:
+            abs_dynamic_dummy.append(abs)
+
+    absolute_dynamics = abs_dynamic_dummy
 
     relative_dynamics.sort(key=lambda x:x.xml_position)
     relative_dynamics = merge_start_end_of_direction(relative_dynamics)
@@ -602,13 +608,16 @@ def get_dynamics(directions):
 
 
 def get_tempos(directions):
-    absolute_tempos_keywords = ['tempo', 'adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace', 'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i']
-    relative_tempos_keywords = ['acc.', 'accel.' 'rit.', 'ritardando', 'accelerando', 'rall.', 'rallentando', 'ritenuto', 'stretto', 'slentando', 'meno mosso', 'piu mosso']
-    absolute_tempos = extract_directions_by_keywords(directions, absolute_tempos_keywords)
-    relative_tempos = extract_directions_by_keywords(directions, relative_tempos_keywords)
+    absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace', 'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i']
+    relative_tempos_keywords = ['acc', 'accel' 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto', 'a tempo' 'stretto', 'slentando', 'meno mosso', 'più mosso'.decode('utf-8')]
+
+    tempos_keywords = absolute_tempos_keywords + relative_tempos_keywords
+    print(tempos_keywords)
+    absolute_tempos = extract_directions_by_keywords(directions, tempos_keywords)
+    # relative_tempos = extract_directions_by_keywords(directions, relative_tempos_keywords)
 
 
-    return absolute_tempos, relative_tempos
+    return absolute_tempos
 
 
 
