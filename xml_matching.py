@@ -20,7 +20,6 @@ relative_tempos_keywords = ['acc', 'accel', 'rit', 'ritardando', 'accelerando', 
                             'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando']
 
 tempos_keywords = absolute_tempos_keywords + relative_tempos_keywords
-print(tempos_keywords)
 
 absolute_dynamics_keywords = ['dynamic', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'fp']
 relative_dynamics_keywords = ['rel_dynamic', 'crescendo', 'diminuendo', 'cresc', 'dim', 'dimin' 'sotto voce',
@@ -48,18 +47,18 @@ def matchXMLtoMIDI(xml_notes, midi_notes):
     match_list = []
 
     # for each note in xml, make candidates of the matching midi note
-    for i in range(len(xml_notes)):
-        note = xml_notes[i]
+    for note in xml_notes:
+        match_threshold = 0.1
         if note.is_rest:
             candidates_list.append([])
             continue
         note_start = note.note_duration.time_position
+        if note.note_duration.after_grace_note:
+            note_start += 0.5
+            match_threshold = 0.6
         # check grace note and adjust time_position
-        if note.note_duration.time_position == 0 and note.note_duration.duration == 0:
-            # print(i)
-            note_start = xml_notes[i+1].note_duration.time_position
         note_pitch = note.pitch[1]
-        temp_list = [{'index': index, 'midi_note': midi_note} for index, midi_note in enumerate(midi_notes) if abs(midi_note.start - note_start) < 0.1 and midi_note.pitch == note_pitch]
+        temp_list = [{'index': index, 'midi_note': midi_note} for index, midi_note in enumerate(midi_notes) if abs(midi_note.start - note_start) < match_threshold and midi_note.pitch == note_pitch]
         candidates_list.append(temp_list)
 
 
@@ -143,19 +142,52 @@ def match_xml_midi_perform(xml_notes, midi_notes, perform_notes, corresp):
 def extract_notes(xml_Doc, melody_only = False):
     parts = xml_Doc.parts[0]
     notes =[]
+    previous_grace_notes = []
     for measure in parts.measures:
         for note in measure.notes:
-            if not note.is_rest and not note.note_duration.is_grace_note:
-                if melody_only:
-                    if note.voice ==1:
-                        notes.append(note)
-                else:
-                    notes.append(note)
+            if melody_only:
+                if note.voice==1:
+                    notes, previous_grace_notes= check_notes_and_append(note, notes, previous_grace_notes)
+            else:
+                notes, previous_grace_notes = check_notes_and_append(note, notes, previous_grace_notes)
+    notes = apply_after_grace_note_to_chord_notes(notes)
     if melody_only:
         notes = delete_chord_notes_for_melody(notes)
-
     notes = apply_tied_notes(notes)
-    notes.sort(key=lambda x: x.note_duration.time_position)
+    notes.sort(key=lambda x: x.note_duration.xml_position)
+    for note in notes:
+        if note.note_duration.after_grace_note:
+            print(note)
+    return notes
+
+def check_notes_and_append(note, notes, previous_grace_notes):
+    if note.note_duration.is_grace_note:
+        previous_grace_notes.append(note)
+    if not note.is_rest and not note.note_duration.is_grace_note:
+        if len(previous_grace_notes) > 0:
+            temp_grc = []
+            grace_order = 0
+            for grc in previous_grace_notes:
+                if grc.voice == note.voice:
+                    note.note_duration.after_grace_note = True
+                    grc.note_duration.grace_order = grace_order
+                    grace_order += 1
+                    # notes.append(grc)
+                else:
+                    temp_grc.append(grc)
+            previous_grace_notes = temp_grc
+        notes.append(note)
+
+    return notes, previous_grace_notes
+
+def apply_after_grace_note_to_chord_notes(notes):
+    for note in notes:
+        if note.note_duration.after_grace_note:
+            onset= note.note_duration.xml_position
+            voice = note.voice
+            chords = find(lambda x: x.note_duration.xml_position == onset and x.voice == voice, notes)
+            for chd in chords:
+                chd.note_duration.after_grace_note = True
     return notes
 
 def extract_measure_position(xml_Doc):
@@ -194,8 +226,11 @@ def apply_grace(xml_Doc):
     notes = extract_notes(xml_Doc)
     for i in range(len(notes)):
         note = notes[i]
-        if note.is_grace_note:
-            pass
+        if note.note_duration.is_grace_note:
+            find_normal_note(notes, i)
+            print(note.note_duration.time_position)
+
+
     return xml_Doc
 
 
@@ -259,10 +294,6 @@ def calculate_IOI_articulation(pairs, index, total_length):
         articulation = None
     return ioi, articulation
 
-def calcuate_articluation(pairs, index, ioi):
-
-
-    return
 
 def calculate_total_length(pairs):
     for i in range(len(pairs)):

@@ -25,6 +25,8 @@ class NoteDuration(object):
     self.tuplet_ratio = Fraction(1, 1)  # Ratio for tuplets (default to 1)
     self.is_grace_note = True           # Assume true until not found
     self.state = state
+    self.after_grace_note = False       # The note is preceded by a grace note(s)
+    self.grace_order = None             # If there are multiple grace notes, record the order of notes (0, 1, 2 ..)
 
   def parse_duration(self, is_in_chord, is_grace_note, duration):
     """Parse the duration of a note and compute timings."""
@@ -47,6 +49,7 @@ class NoteDuration(object):
     # steal time from subsequent notes and they do not have a
     # <duration> tag in the MusicXML
     self.is_grace_note = is_grace_note
+
 
     if is_in_chord:
       # If this is a chord, set the time position to the time position
