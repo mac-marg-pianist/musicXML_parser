@@ -8,7 +8,25 @@ import os
 import midi_utils.midi_utils as midi_utils
 import pretty_midi
 from mxp import MusicXMLDocument
+# import sys
+# # sys.setdefaultencoding() does not exist, here!
+# reload(sys)  # Reload does the trick!
+# sys.setdefaultencoding('UTF8')
 
+
+absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
+                            'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i']
+relative_tempos_keywords = ['acc', 'accel', 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto',
+                            'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando']
+
+tempos_keywords = absolute_tempos_keywords + relative_tempos_keywords
+print(tempos_keywords)
+
+absolute_dynamics_keywords = ['dynamic', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'fp']
+relative_dynamics_keywords = ['rel_dynamic', 'crescendo', 'diminuendo', 'cresc', 'dim', 'dimin' 'sotto voce',
+                              'mezza voce', 'sf', 'fz', 'sfz', 'sffz', 'allargando']
+
+dynamics_keywords = absolute_dynamics_keywords + relative_dynamics_keywords
 
 def apply_tied_notes(xml_parsed_notes):
     tie_clean_list = []
@@ -191,7 +209,7 @@ def extract_perform_features(xml_notes, pairs, measure_positions):
     print(len(xml_notes), len(pairs))
     features = []
     velocity_mean = calculate_mean_velocity(pairs)
-    # total_length_tuple = calculate_total_length(pairs)
+    total_length_tuple = calculate_total_length(pairs)
     # print(total_length_tuple[0], total_length_tuple[1] )
     measure_seocnds = make_midi_measure_seconds(pairs, measure_positions)
     for i in range(len(xml_notes)):
@@ -203,13 +221,18 @@ def extract_perform_features(xml_notes, pairs, measure_positions):
         else:
             measure_length = measure_positions[measure_index] - measure_positions[measure_index-1]
             measure_sec_length = measure_seocnds[measure_index] - measure_seocnds[measure_index-1]
-        length_tuple = (measure_length, measure_sec_length)
+        # length_tuple = (measure_length, measure_sec_length)
         feature ={}
         feature['pitch_interval'] = calculate_pitch_interval(xml_notes, i)
         feature['duration_ratio'] = calculate_duration_ratio(xml_notes, i)
         feature['beat_position'] = (note_position-measure_positions[measure_index]) / measure_length
+
+        dynamic_words = dynamic_words_flatten(xml_notes[i])
+        feature['dynamic'] = keyword_into_onehot(dynamic_words, dynamics_keywords)
+        feature['tempo'] = keyword_into_onehot(xml_notes[i].tempo, tempos_keywords)
+
         if not pairs[i] == []:
-            feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, length_tuple)
+            feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, total_length_tuple)
             feature['loudness'] = math.log( pairs[i]['midi'].velocity / velocity_mean, 10)
         else:
             feature['IOI_ratio'] = None
@@ -518,6 +541,8 @@ def merge_start_end_of_direction(directions):
         if type_name in ['crescendo', 'diminuendo', 'pedal'] and dir.type['content'] != "stop":
             # directions.remove(dir)
             dir_dummy.append(dir)
+        elif type_name == 'words':
+            dir_dummy.append(dir)
     directions = dir_dummy
     return directions
 
@@ -529,15 +554,13 @@ def apply_directions_to_notes(xml_notes, directions):
     #     print(dyn)
     absolute_tempos = get_tempos(directions)
     absolute_tempos_position = [tmp.xml_position for tmp in absolute_tempos]
-    for tmp in absolute_tempos:
-        print(tmp)
 
     for note in xml_notes:
         index = binaryIndex(absolute_dynamics_position, note.note_duration.xml_position)
         note.dynamic.absolute = absolute_dynamics[index].type['content']
         tempo_index = binaryIndex(absolute_tempos_position, note.note_duration.xml_position)
         # note.tempo.absolute = absolute_tempos[tempo_index].type[absolute_tempos[tempo_index].type.keys()[0]]
-        note.tempo.absolute = absolute_tempos[tempo_index].type['content']
+        note.tempo = absolute_tempos[tempo_index].type['content']
 
         # have to improve algorithm
         for rel in relative_dynamics:
@@ -554,15 +577,16 @@ def extract_directions_by_keywords(directions, keywords):
         if dir.type['type'] in keywords:
             sub_directions.append(dir)
         elif dir.type['type'] == 'words':
-            if dir.type['content'].replace(',', '').replace('.', '').decode('utf-8').lower() in keywords:
+            if dir.type['content'].replace(',', '').replace('.', '').lower() in keywords:
                 sub_directions.append(dir)
             else:
                 word_split = dir.type['content'].replace(',', ' ').replace('.', ' ').split(' ')
                 for w in word_split:
-                    if w.decode('utf-8').lower() in keywords:
+                    if w.lower() in keywords:
                         # dir.type[keywords[0]] = dir.type.pop('words')
                         # dir.type[keywords[0]] = w
                         sub_directions.append(dir)
+
             # elif dir.type['words'].split('sempre ')[-1] in keywords:
             #     dir.type['dynamic'] = dir.type.pop('words')
             #     dir.type['dynamic'] = dir.type['dynamic'].split('sempre ')[-1]
@@ -576,8 +600,6 @@ def extract_directions_by_keywords(directions, keywords):
 
 
 def get_dynamics(directions):
-    absolute_dynamics_keywords = ['dynamic', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'fp']
-    relative_dynamics_keywords = ['rel_dynamic', 'crescendo', 'diminuendo', 'cresc', 'dim', 'dimin' 'sotto voce', 'mezza voce', 'sf', 'fz', 'sfz', 'sffz']
     absolute_dynamics = extract_directions_by_keywords(directions, absolute_dynamics_keywords)
     relative_dynamics = extract_directions_by_keywords(directions, relative_dynamics_keywords)
     abs_dynamic_dummy = []
@@ -608,15 +630,11 @@ def get_dynamics(directions):
 
 
 def get_tempos(directions):
-    absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace', 'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i']
-    relative_tempos_keywords = ['acc', 'accel' 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto', 'a tempo' 'stretto', 'slentando', 'meno mosso', 'più mosso'.decode('utf-8')]
 
-    tempos_keywords = absolute_tempos_keywords + relative_tempos_keywords
-    print(tempos_keywords)
+    # print(tempos_keywords)
     absolute_tempos = extract_directions_by_keywords(directions, tempos_keywords)
     # relative_tempos = extract_directions_by_keywords(directions, relative_tempos_keywords)
-
-
+    print(absolute_tempos)
     return absolute_tempos
 
 
@@ -638,3 +656,26 @@ def get_all_words_from_folders(path):
 
     entire_words = list(set(entire_words))
     return entire_words
+
+def keyword_into_onehot(attribute, keywords):
+    one_hot = [0] * len(keywords)
+    if attribute in keywords:
+        index = keywords.index(attribute)
+        one_hot[index] = 1
+
+    word_split = attribute.replace(',', ' ').replace('.', ' ').split(' ')
+    for w in word_split:
+        if w.decode('utf-8').lower() in keywords:
+            index = keywords.index(w.decode('utf-8').lower())
+            one_hot[index] = 1
+
+    return one_hot
+
+
+def dynamic_words_flatten(note):
+    dynamic_words = note.dynamic.absolute
+    if not note.dynamic.relative == []:
+        for rel in note.dynamic.relative:
+            dynamic_words = dynamic_words + ' ' + rel.type['content']
+
+    return dynamic_words
