@@ -77,6 +77,7 @@ class MusicXMLParserState(object):
     # Keep track of current time signature. Does not support polymeter.
     self.time_signature = None
 
+    self.previous_grace_notes = []
 
 class MusicXMLDocument(object):
   """Internal representation of a MusicXML Document.
