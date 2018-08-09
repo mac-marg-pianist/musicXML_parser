@@ -12,7 +12,7 @@ import sys
 # sys.setdefaultencoding() does not exist, here!
 reload(sys)  # Reload does the trick!
 sys.setdefaultencoding('UTF8')
-
+import types
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
                             'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby']
@@ -295,7 +295,6 @@ def calculate_IOI_articulation(pairs, index, total_length):
         ioi = None
         articulation = None
     return ioi, articulation
-
 
 def calculate_total_length(pairs):
     first_pair_index = 0
@@ -602,8 +601,10 @@ def apply_directions_to_notes(xml_notes, directions):
     # for dyn in absolute_dynamics:
     #     print(dyn)
     absolute_tempos = get_tempos(directions)
+    print('abs tempos: ', absolute_tempos)
     for abs in absolute_tempos:
         print (abs)
+    print('abs tempos: ', absolute_dynamics)
     for abs in absolute_dynamics:
         print(abs)
 
@@ -651,27 +652,9 @@ def extract_directions_by_keywords(directions, keywords):
     sub_directions =[]
 
     for dir in directions:
-        if dir.type['type'] in keywords:
+        included = check_direction_by_keywords(dir, keywords)
+        if included:
             sub_directions.append(dir)
-            continue
-        elif dir.type['type'] == 'words':
-            if dir.type['content'].replace(',', '').replace('.', '').lower() in keywords:
-                sub_directions.append(dir)
-                continue
-            else:
-                word_split = dir.type['content'].replace(',', ' ').replace('.', ' ').split(' ')
-                for w in word_split:
-                    if w.lower() in keywords:
-                        # dir.type[keywords[0]] = dir.type.pop('words')
-                        # dir.type[keywords[0]] = w
-                        sub_directions.append(dir)
-                        continue
-
-            for key in keywords:
-                if len(key)>2 and key in dir.type['content']:
-                    sub_directions.append(dir)
-                    continue
-
             # elif dir.type['words'].split('sempre ')[-1] in keywords:
             #     dir.type['dynamic'] = dir.type.pop('words')
             #     dir.type['dynamic'] = dir.type['dynamic'].split('sempre ')[-1]
@@ -683,6 +666,23 @@ def extract_directions_by_keywords(directions, keywords):
 
     return sub_directions
 
+def check_direction_by_keywords(dir, keywords):
+    if dir.type['type'] in keywords:
+        return True
+    elif dir.type['type'] == 'words':
+        if dir.type['content'].replace(',', '').replace('.', '').lower() in keywords:
+            return True
+        else:
+            word_split = dir.type['content'].replace(',', ' ').replace('.', ' ').split(' ')
+            for w in word_split:
+                if w.lower() in keywords:
+                    # dir.type[keywords[0]] = dir.type.pop('words')
+                    # dir.type[keywords[0]] = w
+                    return True
+
+        for key in keywords: # words like 'sempre più mosso'
+            if len(key) > 2 and key in dir.type['content']:
+                return True
 
 def get_dynamics(directions):
     temp_abs_key = absolute_dynamics_keywords
@@ -726,8 +726,6 @@ def get_tempos(directions):
     return absolute_tempos
 
 
-
-
 def get_all_words_from_folders(path):
     entire_words = []
     xml_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(path) for f in filenames if
@@ -752,11 +750,24 @@ def keyword_into_onehot(attribute, keywords):
     if attribute in keywords:
         index = find_index_list_of_list(attribute, keywords)
         one_hot[index] = 1
+
+
+    # for i in range(len(keywords)):
+    #     keys = keywords[i]
+    #     if type(keys) is list:
+    #         for key in keys:
+    #             if len(key)>2 and (key.encode('utf-8') in
     word_split = attribute.replace(',', ' ').replace('.', ' ').split(' ')
     for w in word_split:
-        index = find_index_list_of_list(w.decode('utf-8').lower(), keywords)
-        print('index:',index, ', attribute:', attribute, ', keywords: ', keywords, 'word_split: ', word_split)
-        one_hot[index] = 1
+        index = find_index_list_of_list(w.lower(), keywords)
+        if index:
+            one_hot[index] = 1
+
+    for key in keywords:
+
+        if isinstance(key, types.StringType) and len(key) > 2 and key in attribute:
+            index = keywords.index(key)
+            one_hot[index] = 1
 
     return one_hot
 
@@ -772,11 +783,25 @@ def dynamic_words_flatten(note):
     return dynamic_words
 
 def find_index_list_of_list(element, list):
+    isuni = isinstance(element, unicode) # for python 2.7
     if element in list:
         return list.index(element)
     else:
         for li in list:
-            if type(li) is list and element in li:
-                return list.index(li)
+            if isinstance(li, types.ListType):
+                if isuni:
+                    li = [x.decode('utf-8') for x in li]
+                if element in li:
+                    return list.index(li)
 
     return None
+
+def apply_repetition(xml_notes, xml_doc):
+    pass
+
+# a. after applying_directions, apply repetition
+# b. apply repetition at parsing stage.
+
+
+def read_repetition(xml_doc):
+    pass
