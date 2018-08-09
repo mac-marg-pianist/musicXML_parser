@@ -19,6 +19,7 @@ class Direction(object):
     self.xml_direction = xml_direction
     self.type = {'type': None, 'content': None}
     self.state = copy.copy(state)
+    self.placement = None
     self._parse()
     self.time_position = state.time_position
     self.xml_position = state.xml_position
@@ -29,6 +30,8 @@ class Direction(object):
     child = direction.find('direction-type').getchildren()[0]
     staff = direction.find('staff')
     self.staff = staff.text
+    if 'placement' in direction.attrib.keys():
+      self.placement = direction.attrib['placement']
     if child is not None:
       if child.tag == "dynamics":
         self._parse_dynamics(child)
@@ -36,7 +39,7 @@ class Direction(object):
         self._parse_pedal(child)
       elif child.tag == "wedge":
         self._parse_wedge(child) 
-      elif child.tag == "words":
+      elif child.tag == "words" or child.tag=="other-dynamics":
         self._parse_words(child)
       elif child.tag=='octave-shift':
         self._parse_octave_shift(child)
@@ -77,7 +80,11 @@ class Direction(object):
       xml_dynamics: XML element with tag type 'dynamics'.
     """
     dynamic = xml_dynamics.getchildren()[0].tag
-    self.type = {'type':'dynamic', 'content': dynamic}
+    if dynamic == 'other-dynamics':
+      content = xml_dynamics.getchildren()[0].text
+      self.type = {'type':'words', 'content': content}
+    else:
+      self.type = {'type':'dynamic', 'content': dynamic}
 
   def _parse_wedge(self, xml_wedge):
     """Parse the MusicXML <wedge> element.
@@ -87,17 +94,21 @@ class Direction(object):
     """
     wedge_type_labels = ['crescendo', 'diminuendo']
     wedge_type = xml_wedge.attrib['type']
+    if 'number' in xml_wedge.attrib.keys():
+      wedge_index = xml_wedge.attrib['number']
+    else:
+      wedge_index = None
 
     if wedge_type in wedge_type_labels:
       # Add "start" at the point of a wedge starting point
-      self.type = {'type':wedge_type, 'content': 'start'}
+      self.type = {'type':wedge_type, 'content': 'start', 'number': wedge_index}
 
     else:
       if wedge_type == 'stop':
         previous_type = list(self.state.previous_direction.type['type'])[0]
 
         if previous_type in wedge_type_labels:
-          self.type = {'type':previous_type, 'content': wedge_type}
+          self.type = {'type':previous_type, 'content': wedge_type, 'number': wedge_index}
         else:
           """Need to fix it later - 
           <direction-type>
@@ -106,7 +117,7 @@ class Direction(object):
           still can't figure out wedge type 
           Previous direction-type can be sth else.
           """
-          self.type = {'type':'none', 'content': wedge_type}
+          self.type = {'type':'none', 'content': wedge_type, 'number': wedge_index}
 
   def _parse_words(self, xml_words):
     """Parse the MusicXML <words> element.
@@ -114,7 +125,7 @@ class Direction(object):
     Args:
       xml_wedge: XML element with tag type 'wedge'.
     """
-    self.type = {'type':'words', 'content': xml_words.text.encode('utf-8')}
+    self.type = {'type':'words', 'content': xml_words.text.decode('utf-8')}
 
 
   def _parse_octave_shift(self, xml_shift):
