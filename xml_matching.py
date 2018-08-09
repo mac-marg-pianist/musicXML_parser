@@ -8,24 +8,31 @@ import os
 import midi_utils.midi_utils as midi_utils
 import pretty_midi
 from mxp import MusicXMLDocument
-# import sys
-# # sys.setdefaultencoding() does not exist, here!
-# reload(sys)  # Reload does the trick!
-# sys.setdefaultencoding('UTF8')
+import sys
+# sys.setdefaultencoding() does not exist, here!
+reload(sys)  # Reload does the trick!
+sys.setdefaultencoding('UTF8')
 
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
-                            'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i']
+                            'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby']
 relative_tempos_keywords = ['acc', 'accel', 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto',
                             'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando']
 
 tempos_keywords = absolute_tempos_keywords + relative_tempos_keywords
+tempos_merged_key = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
+                     'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby',
+                     ['acc', 'accel', 'accelerando'],['rit', 'ritardando', 'rall', 'rallentando'], 'ritenuto',
+                    'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando'  ]
 
-absolute_dynamics_keywords = ['dynamic', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'fp']
-relative_dynamics_keywords = ['rel_dynamic', 'crescendo', 'diminuendo', 'cresc', 'dim', 'dimin' 'sotto voce',
+
+absolute_dynamics_keywords = ['ppp', 'pp', 'p', 'piano', 'mp', 'mf', 'f', 'forte', 'ff', 'fff', 'fp']
+relative_dynamics_keywords = ['crescendo', 'diminuendo', 'cresc', 'dim', 'dimin' 'sotto voce',
                               'mezza voce', 'sf', 'fz', 'sfz', 'sffz', 'allargando']
 
 dynamics_keywords = absolute_dynamics_keywords + relative_dynamics_keywords
+dynamics_merged_keys = ['ppp', 'pp', ['p', 'piano'], 'mp', 'mf', ['f', 'forte'], 'ff', 'fff', 'fp', ['crescendo', 'cresc'],  ['diminuendo', 'dim', 'dimin'],
+                        'sotto voce', 'mezza voce', ['sf', 'fz', 'sfz', 'sffz'], 'allargando' ]
 
 def apply_tied_notes(xml_parsed_notes):
     tie_clean_list = []
@@ -155,9 +162,6 @@ def extract_notes(xml_Doc, melody_only = False):
         notes = delete_chord_notes_for_melody(notes)
     notes = apply_tied_notes(notes)
     notes.sort(key=lambda x: x.note_duration.xml_position)
-    for note in notes:
-        if note.note_duration.after_grace_note:
-            print(note)
     return notes
 
 def check_notes_and_append(note, notes, previous_grace_notes):
@@ -228,8 +232,6 @@ def apply_grace(xml_Doc):
         note = notes[i]
         if note.note_duration.is_grace_note:
             find_normal_note(notes, i)
-            print(note.note_duration.time_position)
-
 
     return xml_Doc
 
@@ -263,8 +265,8 @@ def extract_perform_features(xml_notes, pairs, measure_positions):
         feature['beat_position'] = (note_position-measure_positions[measure_index]) / measure_length
 
         dynamic_words = dynamic_words_flatten(xml_notes[i])
-        feature['dynamic'] = keyword_into_onehot(dynamic_words, dynamics_keywords)
-        feature['tempo'] = keyword_into_onehot(xml_notes[i].tempo, tempos_keywords)
+        feature['dynamic'] = keyword_into_onehot(dynamic_words, dynamics_merged_keys)
+        feature['tempo'] = keyword_into_onehot(xml_notes[i].tempo.absolute, tempos_merged_key)
 
         if not pairs[i] == []:
             feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, total_length_tuple)
@@ -296,10 +298,15 @@ def calculate_IOI_articulation(pairs, index, total_length):
 
 
 def calculate_total_length(pairs):
+    first_pair_index = 0
+    for i in range(len(pairs)):
+        if not pairs[i]  == []:
+            first_pair_index = i
+            break
     for i in range(len(pairs)):
         if not pairs[-i-1] == []:
-            xml_length =  pairs[-i-1]['xml'].note_duration.xml_position - pairs[0]['xml'].note_duration.xml_position
-            midi_length = pairs[-i-1]['midi'].start - pairs[0]['midi'].start
+            xml_length =  pairs[-i-1]['xml'].note_duration.xml_position - pairs[first_pair_index]['xml'].note_duration.xml_position
+            midi_length = pairs[-i-1]['midi'].start - pairs[first_pair_index]['midi'].start
             return (xml_length, midi_length)
 
 def calculate_mean_velocity(pairs):
@@ -330,12 +337,15 @@ def calculate_duration_ratio(xml_notes, index):
 def load_entire_subfolder(path):
     entire_pairs = []
     midi_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(path) for f in filenames if
-              f == 'midi.mid']
+              f == 'midi_cleaned.mid']
     for midifile in midi_list:
         foldername = os.path.split(midifile)[0] + '/'
-        mxl_name = foldername + 'xml.mxl'
-        xml_name = foldername + 'xml.xml'
-        if os.path.isfile(mxl_name) and os.path.isfile(xml_name) :
+        # mxl_name = foldername + 'xml.mxl'
+        # xml_name = foldername + 'xml.xml'
+        # mxl_name = foldername + 'xml.mxl'
+        xml_name = foldername + 'musicxml_cleaned.musicxml'
+
+        if os.path.isfile(xml_name) :
             print(foldername)
             piece_pairs = load_pairs_from_folder(foldername)
             entire_pairs.append(piece_pairs)
@@ -343,8 +353,8 @@ def load_entire_subfolder(path):
     return entire_pairs
 
 def load_pairs_from_folder(path):
-    xml_name = path+'xml.xml'
-    score_midi_name = path+'midi.mid'
+    xml_name = path+'musicxml_cleaned.musicxml'
+    score_midi_name = path+'midi_cleaned.mid'
 
     XMLDocument = MusicXMLDocument(xml_name)
     xml_notes = extract_notes(XMLDocument, melody_only=True)
@@ -355,6 +365,9 @@ def load_pairs_from_folder(path):
     measure_positions = extract_measure_position(XMLDocument)
     filenames = os.listdir(path)
     perform_features_piece = []
+    directions = extract_directions(XMLDocument)
+    xml_notes = apply_directions_to_notes(xml_notes, directions)
+
     for file in filenames:
         if file[-18:] == '_infer_corresp.txt':
             perf_name = file.split('_infer')[0]
@@ -368,6 +381,7 @@ def load_pairs_from_folder(path):
 
             xml_perform_match = match_score_pair2perform(score_pairs, perf_midi_notes, corresp)
             perform_pairs = make_xml_midi_pair(xml_notes, perf_midi_notes, xml_perform_match)
+
 
             perform_features = extract_perform_features(xml_notes, perform_pairs, measure_positions)
             perform_features_piece.append(perform_features)
@@ -540,15 +554,19 @@ def extract_directions(xml_doc):
         if not dir.type == None:
             if dir.type['type'] == "none":
                 for j in range(i):
-                    prev_dir = directions[i-j]
-                    prev_key = prev_dir.type['type']
-
-                    if prev_key == "crescendo":
-                        dir.type['type'] = 'crescendo'
-                        break
-                    elif prev_key == "diminuendo":
-                        dir.type['type'] = 'diminuendo'
-                        break
+                    prev_dir = directions[i-j-1]
+                    if 'number' in prev_dir.type.keys():
+                        prev_key = prev_dir.type['type']
+                        prev_num = prev_dir.type['number']
+                    else:
+                        continue
+                    if prev_num == dir.type['number']:
+                        if prev_key == "crescendo":
+                            dir.type['type'] = 'crescendo'
+                            break
+                        elif prev_key == "diminuendo":
+                            dir.type['type'] = 'diminuendo'
+                            break
             cleaned_direction.append(dir)
         else:
             print(vars(dir.xml_direction))
@@ -561,7 +579,7 @@ def merge_start_end_of_direction(directions):
         type_name = dir.type['type']
         if type_name in ['crescendo', 'diminuendo', 'pedal'] and dir.type['content'] == "stop":
             for j in range(i):
-                prev_dir = directions[i-j]
+                prev_dir = directions[i-j-1]
                 prev_type_name = prev_dir.type['type']
                 if type_name == prev_type_name and prev_dir.type['content'] == "start" and dir.staff == prev_dir.staff:
                     prev_dir.end_xml_position = dir.xml_position
@@ -584,6 +602,11 @@ def apply_directions_to_notes(xml_notes, directions):
     # for dyn in absolute_dynamics:
     #     print(dyn)
     absolute_tempos = get_tempos(directions)
+    for abs in absolute_tempos:
+        print (abs)
+    for abs in absolute_dynamics:
+        print(abs)
+
     absolute_tempos_position = [tmp.xml_position for tmp in absolute_tempos]
 
     for note in xml_notes:
@@ -591,15 +614,38 @@ def apply_directions_to_notes(xml_notes, directions):
         note.dynamic.absolute = absolute_dynamics[index].type['content']
         tempo_index = binaryIndex(absolute_tempos_position, note.note_duration.xml_position)
         # note.tempo.absolute = absolute_tempos[tempo_index].type[absolute_tempos[tempo_index].type.keys()[0]]
-        note.tempo = absolute_tempos[tempo_index].type['content']
-
+        note.tempo.absolute = absolute_tempos[tempo_index].type['content']
         # have to improve algorithm
         for rel in relative_dynamics:
-            if note.note_duration.xml_position >= rel.xml_position and note.note_duration.xml_position <= rel.end_xml_position:
+            if rel.xml_position > note.note_duration.xml_position:
+                continue
+            if note.note_duration.xml_position <= rel.end_xml_position:
                 note.dynamic.relative.append(rel)
-
+        if len(note.dynamic.relative) >1:
+            note = divide_cresc_staff(note)
     return xml_notes
 
+def divide_cresc_staff(note):
+    #check the note has both crescendo and diminuendo (only wedge type)
+    cresc = False
+    dim = False
+    for rel in note.dynamic.relative:
+        if rel.type['type'] == 'crescendo':
+            cresc = True
+        elif rel.type['type'] == 'diminuendo':
+            dim = True
+
+    if cresc and dim:
+        delete_list = []
+        for i in range(len(note.dynamic.relative)):
+            rel = note.dynamic.relative[i]
+            if rel.type['type'] in ['crescendo', 'diminuendo']:
+                if (rel.placement == 'above' and note.staff ==2) or (rel.placement == 'below' and note.staff ==1):
+                    delete_list.append(i)
+        for i in sorted(delete_list, reverse=True):
+            del note.dynamic.relative[i]
+
+    return note
 
 def extract_directions_by_keywords(directions, keywords):
     sub_directions =[]
@@ -607,9 +653,11 @@ def extract_directions_by_keywords(directions, keywords):
     for dir in directions:
         if dir.type['type'] in keywords:
             sub_directions.append(dir)
+            continue
         elif dir.type['type'] == 'words':
             if dir.type['content'].replace(',', '').replace('.', '').lower() in keywords:
                 sub_directions.append(dir)
+                continue
             else:
                 word_split = dir.type['content'].replace(',', ' ').replace('.', ' ').split(' ')
                 for w in word_split:
@@ -617,6 +665,12 @@ def extract_directions_by_keywords(directions, keywords):
                         # dir.type[keywords[0]] = dir.type.pop('words')
                         # dir.type[keywords[0]] = w
                         sub_directions.append(dir)
+                        continue
+
+            for key in keywords:
+                if len(key)>2 and key in dir.type['content']:
+                    sub_directions.append(dir)
+                    continue
 
             # elif dir.type['words'].split('sempre ')[-1] in keywords:
             #     dir.type['dynamic'] = dir.type.pop('words')
@@ -631,7 +685,10 @@ def extract_directions_by_keywords(directions, keywords):
 
 
 def get_dynamics(directions):
-    absolute_dynamics = extract_directions_by_keywords(directions, absolute_dynamics_keywords)
+    temp_abs_key = absolute_dynamics_keywords
+    temp_abs_key.append('dynamic')
+
+    absolute_dynamics = extract_directions_by_keywords(directions, temp_abs_key)
     relative_dynamics = extract_directions_by_keywords(directions, relative_dynamics_keywords)
     abs_dynamic_dummy = []
     for abs in absolute_dynamics:
@@ -656,7 +713,8 @@ def get_dynamics(directions):
             rel.next_dynamic = absolute_dynamics[index+1].type['content']
             if not hasattr(rel, 'end_xml_position'):
                 rel.end_xml_position = absolute_dynamics_position[index+1]
-
+        if not hasattr(rel, 'end_xml_position'):
+            rel.end_xml_position = float("inf")
     return absolute_dynamics, relative_dynamics
 
 
@@ -665,7 +723,6 @@ def get_tempos(directions):
     # print(tempos_keywords)
     absolute_tempos = extract_directions_by_keywords(directions, tempos_keywords)
     # relative_tempos = extract_directions_by_keywords(directions, relative_tempos_keywords)
-    print(absolute_tempos)
     return absolute_tempos
 
 
@@ -690,15 +747,16 @@ def get_all_words_from_folders(path):
 
 def keyword_into_onehot(attribute, keywords):
     one_hot = [0] * len(keywords)
+    if attribute == None:
+        return one_hot
     if attribute in keywords:
-        index = keywords.index(attribute)
+        index = find_index_list_of_list(attribute, keywords)
         one_hot[index] = 1
-
     word_split = attribute.replace(',', ' ').replace('.', ' ').split(' ')
     for w in word_split:
-        if w.decode('utf-8').lower() in keywords:
-            index = keywords.index(w.decode('utf-8').lower())
-            one_hot[index] = 1
+        index = find_index_list_of_list(w.decode('utf-8').lower(), keywords)
+        print('index:',index, ', attribute:', attribute, ', keywords: ', keywords, 'word_split: ', word_split)
+        one_hot[index] = 1
 
     return one_hot
 
@@ -707,6 +765,18 @@ def dynamic_words_flatten(note):
     dynamic_words = note.dynamic.absolute
     if not note.dynamic.relative == []:
         for rel in note.dynamic.relative:
-            dynamic_words = dynamic_words + ' ' + rel.type['content']
-
+            if rel.type['type'] == 'words':
+                dynamic_words = dynamic_words + ' ' + rel.type['content']
+            else:
+                dynamic_words = dynamic_words + ' ' + rel.type['type']
     return dynamic_words
+
+def find_index_list_of_list(element, list):
+    if element in list:
+        return list.index(element)
+    else:
+        for li in list:
+            if type(li) is list and element in li:
+                return list.index(li)
+
+    return None
