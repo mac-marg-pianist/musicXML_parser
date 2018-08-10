@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from mxp import MusicXMLDocument
 import midi_utils.midi_utils as midi_utils
@@ -9,7 +11,7 @@ import pickle
 folderDir = 'chopin_cleaned/Chopin_Ballade/1/'
 # folderDir = 'mxp/testdata/dummy/chopin_ballade3/'
 # artistName = 'Sun08'
-artistName = 'Ali01'
+artistName = 'Ye01'
 xmlname = 'musicxml_cleaned.musicxml'
 # xmlname = 'xml.xml'
 midiname= 'midi_cleaned.mid'
@@ -51,7 +53,9 @@ for dir in directions:
 melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
 # #
 # for note in melody_notes:
-#     print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo)
+#     # print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo)
+#     # print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo.absolute, note.note_notations)
+#     print(vars(note.note_notations))
 #     if not note.dynamic.relative == []:
 #         for rel in note.dynamic.relative:
 #             print(rel)
@@ -72,9 +76,7 @@ melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
 measure_positions = xml_matching.extract_measure_position(XMLDocument)
 features = xml_matching.extract_perform_features(melody_notes, perform_pairs, measure_positions)
 
-for feature in features:
-    # print(feature['articulation'])
-    print(feature['dynamic'])
+print(len(features[0]['dynamic']), len(features[0]['tempo']))
 #
 # ioi_list = []
 # articul_list =[]
@@ -93,12 +95,12 @@ for feature in features:
 #
 # for note in new_midi:
 #     print(note)
-
+#
 # xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid')
 
 
 # load and save data
 chopin_pairs = xml_matching.load_entire_subfolder('chopin_cleaned/')
 # print(chopin_pairs)
-with open("pairs_entire3.dat", "wb") as f:
+with open("pairs_entire4.dat", "wb") as f:
     pickle.dump(chopin_pairs, f, protocol=2)

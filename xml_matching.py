@@ -15,24 +15,24 @@ sys.setdefaultencoding('UTF8')
 import types
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
-                            'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby']
+                            'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby', 'agitato']
 relative_tempos_keywords = ['acc', 'accel', 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto',
                             'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando']
 
 tempos_keywords = absolute_tempos_keywords + relative_tempos_keywords
 tempos_merged_key = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
-                     'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby',
+                     'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby', 'agitato',
                      ['acc', 'accel', 'accelerando'],['rit', 'ritardando', 'rall', 'rallentando'], 'ritenuto',
                     'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando'  ]
 
 
 absolute_dynamics_keywords = ['ppp', 'pp', 'p', 'piano', 'mp', 'mf', 'f', 'forte', 'ff', 'fff', 'fp']
 relative_dynamics_keywords = ['crescendo', 'diminuendo', 'cresc', 'dim', 'dimin' 'sotto voce',
-                              'mezza voce', 'sf', 'fz', 'sfz', 'sffz', 'allargando']
+                              'mezza voce', 'sf', 'fz', 'sfz', 'sffz']
 
 dynamics_keywords = absolute_dynamics_keywords + relative_dynamics_keywords
 dynamics_merged_keys = ['ppp', 'pp', ['p', 'piano'], 'mp', 'mf', ['f', 'forte'], 'ff', 'fff', 'fp', ['crescendo', 'cresc'],  ['diminuendo', 'dim', 'dimin'],
-                        'sotto voce', 'mezza voce', ['sf', 'fz', 'sfz', 'sffz'], 'allargando' ]
+                        'sotto voce', 'mezza voce', ['sf', 'fz', 'sfz', 'sffz'] ]
 
 def apply_tied_notes(xml_parsed_notes):
     tie_clean_list = []
@@ -260,13 +260,16 @@ def extract_perform_features(xml_notes, pairs, measure_positions):
             measure_sec_length = measure_seocnds[measure_index] - measure_seocnds[measure_index-1]
         # length_tuple = (measure_length, measure_sec_length)
         feature ={}
+        feature['pitch'] = xml_notes[i].pitch[1]
         feature['pitch_interval'] = calculate_pitch_interval(xml_notes, i)
+        feature['duration'] = xml_notes[i].note_duration.duration / measure_length
         feature['duration_ratio'] = calculate_duration_ratio(xml_notes, i)
         feature['beat_position'] = (note_position-measure_positions[measure_index]) / measure_length
 
         dynamic_words = dynamic_words_flatten(xml_notes[i])
         feature['dynamic'] = keyword_into_onehot(dynamic_words, dynamics_merged_keys)
         feature['tempo'] = keyword_into_onehot(xml_notes[i].tempo.absolute, tempos_merged_key)
+        feature['notation'] = note_notation_to_vector(xml_notes[i])
 
         if not pairs[i] == []:
             feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, total_length_tuple)
@@ -796,6 +799,19 @@ def find_index_list_of_list(element, list):
 
     return None
 
+
+def note_notation_to_vector(note):
+    # trill, tenuto, accent, staccato, fermata
+    keywords = ['is_trill', 'is_tenuto', 'is_accent', 'is_staccato', 'is_fermata']
+    notation_vec = [0] * len(keywords)
+
+    for i in range(len(keywords)):
+        key = keywords[i]
+        if getattr(note.note_notations, key) == True:
+            notation_vec[i] = 1
+
+    return notation_vec
+
 def apply_repetition(xml_notes, xml_doc):
     pass
 
@@ -805,3 +821,4 @@ def apply_repetition(xml_notes, xml_doc):
 
 def read_repetition(xml_doc):
     pass
+
