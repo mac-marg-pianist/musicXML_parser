@@ -21,6 +21,8 @@ class Note(object):
         # Note.is_grace_note is use to calculate NoteDuration of grace note.
         # Therefore, use NoteDuration.is_grace_note.
         self.is_grace_note = False
+        # track whether the note is overlapped (share same xml_position and same pitch but shorter duration with another note)
+        self.is_overlapped = False
         self.pitch = None  # Tuple (Pitch Name, MIDI number)
         self.note_duration = NoteDuration(state)
         self.state_fixed = copy.copy(state)
@@ -28,8 +30,10 @@ class Note(object):
         self.note_notations = Notations()
         self.dynamic = NoteDynamic()
         self.tempo = NoteTempo()
-        self._parse()
         self.staff = 1
+        self.chord_index = 0
+
+        self._parse()
 
     def _parse(self):
         """Parse the MusicXML <note> element."""
@@ -41,6 +45,8 @@ class Note(object):
         for child in self.xml_note:
             if child.tag == 'chord':
                 self.is_in_chord = True
+                self.state.chord_index += 1
+                self.chord_index = self.state.chord_index
             elif child.tag == 'duration':  # if the note is_grace_note, the note does not have 'duration' child.
                 self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note, child.text)
                 # if len(self.state.previous_grace_notes) > 0:
@@ -70,6 +76,10 @@ class Note(object):
             else:
                 # Ignore other tag types because they are not relevant to mxp.
                 pass
+
+        # reset state.chord_index if it is not chord note
+        if self.is_in_chord == False:
+            self.state.chord_index = 0
 
     def _parse_pitch(self, xml_pitch):
         """Parse the MusicXML <pitch> element."""

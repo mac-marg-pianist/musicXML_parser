@@ -77,7 +77,11 @@ class MusicXMLParserState(object):
     # Keep track of current time signature. Does not support polymeter.
     self.time_signature = None
 
+    # Keep track of previous (unsolved) grace notes
     self.previous_grace_notes = []
+
+    # Keep track of chord index
+    self.chord_index = 0
 
 class MusicXMLDocument(object):
   """Internal representation of a MusicXML Document.
