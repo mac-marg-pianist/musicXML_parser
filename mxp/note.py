@@ -6,6 +6,7 @@ from mxp.notations import Notations
 from mxp.note_duration import NoteDuration
 from mxp.note_dynamic import NoteDynamic
 from mxp.note_dynamic import NoteTempo
+from mxp.note_dynamic import NotePedal
 
 import copy
 
@@ -32,6 +33,8 @@ class Note(object):
         self.tempo = NoteTempo()
         self.staff = 1
         self.chord_index = 0
+        self.pedal = NotePedal()
+        self.followed_note = None # for grace note
 
         self._parse()
 
