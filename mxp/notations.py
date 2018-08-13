@@ -33,6 +33,7 @@ class Notations(object):
     self.tied_stop = False
     self.is_trill = False          
     self.is_tuplet = False
+    self.is_strong_accent = False
 
   def parse_notations(self, xml_notations):
     """Parse the MusicXML <Notations> element."""
@@ -71,6 +72,8 @@ class Notations(object):
       self.is_tenuto = True
     elif tag == 'tuplet':
       self.is_tuplet = True
+    elif tag =='strong-accent':
+      self.is_strong_accent = True
   
   def _parse_ornaments(self, xml_ornaments):
     """Parse the MusicXML <ornaments> element.
