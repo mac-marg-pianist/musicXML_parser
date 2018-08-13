@@ -514,7 +514,7 @@ def load_pairs_from_folder(path):
     score_midi_name = path+'midi_cleaned.mid'
 
     XMLDocument = MusicXMLDocument(xml_name)
-    xml_notes = extract_notes(XMLDocument, melody_only=False)
+    xml_notes = extract_notes(XMLDocument, melody_only=False, grace_note=True)
     score_midi = midi_utils.to_midi_zero(score_midi_name)
     score_midi_notes = score_midi.instruments[0].notes
     match_list = matchXMLtoMIDI(xml_notes, score_midi_notes)
@@ -540,7 +540,8 @@ def load_pairs_from_folder(path):
 
             xml_perform_match = match_score_pair2perform(score_pairs, perf_midi_notes, corresp)
             perform_pairs = make_xml_midi_pair(xml_notes, perf_midi_notes, xml_perform_match)
-
+            print("performance name is " + perf_name)
+            check_pairs(perform_pairs)
 
             perform_features = extract_perform_features(xml_notes, perform_pairs, measure_positions)
             perform_features_piece.append(perform_features)
@@ -664,10 +665,12 @@ def apply_perform_features(xml_notes, features):
     default_tempo = xml_notes[0].state_fixed.qpm / 60 * xml_notes[0].state_fixed.divisions
     previous_ioi = 0
     current_sec = 0
-    default_velocity = 64
     between_notes = find_notes_between_melody_notes(xml_notes, melody_notes)
     num_melody_notes = len(melody_notes)
     prev_vel = 64
+
+
+
     for i in range(num_melody_notes):
         note = melody_notes[i]
         xml_index = xml_notes.index(note)
@@ -698,18 +701,47 @@ def apply_perform_features(xml_notes, features):
             passed_duration = betw_note.note_duration.xml_position - note.note_duration.xml_position
             passed_second = passed_duration / tempo
             betw_note.note_duration.time_position = current_sec + passed_second
-            betw_note.note_duration.seconds = betw_note.note_duration.duration / tempo
-            if betw_note.note_duration.is_grace_note:
-                betw_note.note_duration.seconds = (betw_note.followed_note.note_duration.time_position - betw_note.note_duration.time_position)\
-                                                  * betw_note.note_duration.grace_order
+            # betw_note.note_duration.seconds = betw_note.note_duration.duration / tempo
 
             betw_note, prev_vel = apply_feat_to_a_note(betw_note, features[betw_index], prev_vel)
-
+        for j in range(num_between_notes):
+            betw_note = between_notes[i][j]
+            if betw_note.note_duration.is_grace_note:
+                betw_note.note_duration.seconds = (betw_note.followed_note.note_duration.time_position
+                                                   - betw_note.note_duration.time_position)\
+                                                  * betw_note.note_duration.grace_order
         if not i == num_melody_notes-1:
             duration_to_next = melody_notes[i + 1].note_duration.xml_position - melody_notes[i].note_duration.xml_position  # there can be a rest
             second_to_next_note = duration_to_next / tempo
             next_sec = current_sec + second_to_next_note
             current_sec = next_sec
+
+    # after the new time_position of melody notes are fixed, calculate offset of btw notes
+    xml_time_pairs = {'beat': [note.note_duration.xml_position for note in melody_notes],
+                      'time': [note.note_duration.time_position for note in melody_notes]}
+    for i in range(num_melody_notes):
+        num_between_notes = len(between_notes[i])
+        for j in range(num_between_notes):
+            betw_note = between_notes[i][j]
+            if betw_note.note_duration.is_grace_note:
+                continue
+            note_offset_beat = betw_note.note_duration.xml_position + betw_note.note_duration.duration
+            offset_index = binaryIndex(xml_time_pairs['beat'], note_offset_beat)
+
+            while offset_index + 1 >= num_melody_notes:
+                offset_index += -1
+            tempo = (xml_time_pairs['beat'][offset_index+1] - xml_time_pairs['beat'][offset_index]) \
+                    / (xml_time_pairs['time'][offset_index+1] - xml_time_pairs['time'][offset_index])
+
+            exceed_beat = note_offset_beat - xml_time_pairs['beat'][offset_index]
+            if not math.isinf(tempo):
+                offset_time = xml_time_pairs['time'][offset_index] + exceed_beat / tempo
+            else:
+                offset_time = xml_time_pairs['time'][offset_index]
+
+            betw_note.note_duration.seconds = max(offset_time - betw_note.note_duration.time_position, 0.05)
+
+
 
     return xml_notes
 
@@ -738,15 +770,22 @@ def apply_feat_to_a_note(note, feat, prev_vel):
         note.velocity = feat['loudness']
         prev_vel = note.velocity
     else:
-        note.velocity = 64
+        note.velocity = prev_vel
     if not feat['pedal_at_start'] == None:
-        note.pedal.at_start = feat['pedal_at_start']
-        note.pedal.at_end = feat['pedal_at_end']
-        note.pedal.refresh = feat['pedal_refresh']
-        note.pedal.refresh_time = feat['pedal_refresh_time']
-        note.pedal.cut = feat['pedal_cut']
-        note.pedal.cut_time = feat['pedal_cut_time']
-        note.pedal.soft = feat['soft_pedal']
+        # note.pedal.at_start = feat['pedal_at_start']
+        # note.pedal.at_end = feat['pedal_at_end']
+        # note.pedal.refresh = feat['pedal_refresh']
+        # note.pedal.refresh_time = feat['pedal_refresh_time']
+        # note.pedal.cut = feat['pedal_cut']
+        # note.pedal.cut_time = feat['pedal_cut_time']
+        # note.pedal.soft = feat['soft_pedal']
+        note.pedal.at_start = int(round(feat['pedal_at_start']))
+        note.pedal.at_end = int(round(feat['pedal_at_end']))
+        note.pedal.refresh = int(round(feat['pedal_refresh']))
+        note.pedal.refresh_time = int(round(feat['pedal_refresh_time']))
+        note.pedal.cut = int(round(feat['pedal_cut']))
+        note.pedal.cut_time = int(round(feat['pedal_cut_time']))
+        note.pedal.soft = int(round(feat['soft_pedal']))
     return note, prev_vel
 
 def make_new_note(note, time_a, time_b, articulation, loudness, default_velocity):
@@ -798,7 +837,7 @@ def save_midi_notes_as_piano_midi(midi_notes, output_name, bool_pedal=False):
     if bool_pedal:
         pedals = piano_midi.instruments[0].control_changes
         for pedal in pedals:
-            if pedal.value < 64:
+            if pedal.value < 40:
                 pedal.value = 0
 
 
@@ -1083,6 +1122,7 @@ def xml_notes_to_midi(xml_notes):
     for note in xml_notes:
         if note.is_overlapped: # ignore overlapped notes.
             continue
+
         pitch = note.pitch[1]
         start = note.note_duration.time_position
         end = start + note.note_duration.seconds
