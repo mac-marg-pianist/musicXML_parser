@@ -823,7 +823,7 @@ def interpolation(a, list1, list2, index):
     return b1+ (a-a1) / (a2-a1) * (b2 - b1)
 
 
-def save_midi_notes_as_piano_midi(midi_notes, output_name, bool_pedal=False):
+def save_midi_notes_as_piano_midi(midi_notes, output_name, bool_pedal=False, disklavier=False):
     piano_midi = pretty_midi.PrettyMIDI()
     piano_program = pretty_midi.instrument_name_to_program('Acoustic Grand Piano')
     piano = pretty_midi.Instrument(program=piano_program)
@@ -837,10 +837,24 @@ def save_midi_notes_as_piano_midi(midi_notes, output_name, bool_pedal=False):
     if bool_pedal:
         pedals = piano_midi.instruments[0].control_changes
         for pedal in pedals:
-            if pedal.value < 40:
+            if pedal.value < 75:
                 pedal.value = 0
 
 
+    if disklavier:
+        pedals = piano_midi.instruments[0].control_changes
+        pedals.sort(key=lambda x:x.time)
+        previous_off_time = 0
+        for pedal in pedals:
+            if pedal.time <0.3:
+                continue
+            if pedal < 75:
+                previous_off_time = pedal.time
+            else:
+                time_passed = pedal.time - previous_off_time
+                if time_passed < 0.3:
+                    pedals.remove(pedal)
+        piano_midi.instruments[0].control_changes = pedals
     piano_midi.write(output_name)
 
 
