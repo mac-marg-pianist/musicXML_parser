@@ -125,7 +125,8 @@ class Direction(object):
     Args:
       xml_wedge: XML element with tag type 'wedge'.
     """
-    self.type = {'type':'words', 'content': xml_words.text.decode('utf-8')}
+    # self.type = {'type':'words', 'content': xml_words.text.decode('utf-8')}
+    self.type = {'type': 'words', 'content': xml_words.text}
 
 
   def _parse_octave_shift(self, xml_shift):

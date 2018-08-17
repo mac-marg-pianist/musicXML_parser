@@ -8,12 +8,13 @@ import os
 import midi_utils.midi_utils as midi_utils
 import pretty_midi
 from mxp import MusicXMLDocument
-import sys
-# sys.setdefaultencoding() does not exist, here!
-reload(sys)  # Reload does the trick!
-sys.setdefaultencoding('UTF8')
+# import sys
+# # sys.setdefaultencoding() does not exist, here!
+# reload(sys)  # Reload does the trick!
+# sys.setdefaultencoding('UTF8')
 import types
 import midi_utils.midi_utils as midi_utils
+import numpy as np
 
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
@@ -1075,7 +1076,8 @@ def keyword_into_onehot(attribute, keywords):
 
     for key in keywords:
 
-        if isinstance(key, types.StringType) and len(key) > 2 and key in attribute:
+        if isinstance(key, str) and len(key) > 2 and key in attribute:
+        # if type(key) is st and len(key) > 2 and key in attribute:
             index = keywords.index(key)
             one_hot[index] = 1
 
@@ -1092,17 +1094,17 @@ def dynamic_words_flatten(note):
                 dynamic_words = dynamic_words + ' ' + rel.type['type']
     return dynamic_words
 
-def find_index_list_of_list(element, list):
-    isuni = isinstance(element, unicode) # for python 2.7
-    if element in list:
-        return list.index(element)
+def find_index_list_of_list(element, in_list):
+    # isuni = isinstance(element, unicode) # for python 2.7
+    if element in in_list:
+        return in_list.index(element)
     else:
-        for li in list:
-            if isinstance(li, types.ListType):
-                if isuni:
-                    li = [x.decode('utf-8') for x in li]
+        for li in in_list:
+            if isinstance(li, list):
+                # if isuni:
+                #     li = [x.decode('utf-8') for x in li]
                 if element in li:
-                    return list.index(li)
+                    return in_list.index(li)
 
     return None
 
@@ -1193,3 +1195,37 @@ def check_overlapped_notes(xml_notes):
 
     return xml_notes
 
+
+def read_xml_to_numpy(path_name, means, stds):
+    xml_name = path_name + 'musicxml_cleaned.musicxml'
+    midi_name = path_name + 'midi_cleaned.mid'
+
+    if not os.path.isfile(xml_name):
+        xml_name = path_name + 'xml.xml'
+        midi_name = path_name + 'midi.mid'
+
+
+    xml_object = MusicXMLDocument(xml_name)
+    xml_notes = extract_notes(xml_object, melody_only=False, grace_note=True)
+    directions = extract_directions(xml_object)
+    xml_notes = apply_directions_to_notes(xml_notes, directions)
+    midi_file = midi_utils.to_midi_zero(midi_name)
+    midi_file = midi_utils.add_pedal_inf_to_notes(midi_file)
+    midi_notes = midi_file.instruments[0].notes
+    match_list = matchXMLtoMIDI(xml_notes, midi_notes)
+    score_pairs = make_xml_midi_pair(xml_notes, midi_notes, match_list)
+    measure_positions = extract_measure_position(xml_object)
+    features = extract_perform_features(xml_notes, score_pairs, measure_positions)
+
+    test_x = []
+    for feat in features:
+        # if not feat['pitch_interval'] == None:
+        test_x.append([ (feat['pitch']-means[0][0])/stds[0][0],  (feat['pitch_interval']-means[0][1])/stds[0][1] ,
+                        (feat['duration'] - means[0][2]) / stds[0][2],(feat['duration_ratio']-means[0][3])/stds[0][3],
+                        (feat['beat_position']-means[0][4])/stds[0][4], (feat['voice']-means[0][5])/stds[0][5],
+                        feat['xml_position'], feat['grace_order']]
+                      + feat['tempo'] + feat['dynamic'] + feat['notation'])
+        # else:
+        #     test_x.append( [(feat['pitch']-means[0][0])/stds[0][0], 0,  (feat['duration'] - means[0][2]) / stds[0][2], 0,
+        #                     (feat['beat_position']-means[0][4])/stds[0][4]]
+        #                    + feat['tempo'] + feat['dynamic'] + feat['notation'] )
