@@ -255,6 +255,7 @@ def find_normal_note(notes, grace_index):
 def extract_score_features(xml_notes, measure_positions):
     features = []
     xml_length = len(xml_notes)
+    melody_notes = extract_melody_only_from_notes(xml_notes)
     features = []
     for i in range(xml_length):
         note = xml_notes[i]
@@ -279,6 +280,7 @@ def extract_score_features(xml_notes, measure_positions):
         feature['voice'] = note.voice
         feature['xml_position'] = note.note_duration.xml_position / total_length
         feature['grace_order'] = note.note_duration.grace_order
+        feature['melody'] = int(note in melody_notes)
 
         dynamic_words = dynamic_words_flatten(note)
         feature['dynamic'] = keyword_into_onehot(dynamic_words, dynamics_merged_keys)
@@ -305,31 +307,6 @@ def extract_perform_features(xml_notes, pairs, measure_positions):
     feat_len = len(score_features)
 
     for i in range(feat_len):
-    # for i in range(len(xml_notes)):
-    #     note = xml_notes[i]
-    #     note_position = note.note_duration.xml_position
-    #     measure_index = binaryIndex(measure_positions, note_position)
-    #     if measure_index+1 <len(measure_positions):
-    #         measure_length = measure_positions[measure_index+1] - measure_positions[measure_index]
-    #         # measure_sec_length = measure_seocnds[measure_index+1] - measure_seocnds[measure_index]
-    #     else:
-    #         measure_length = measure_positions[measure_index] - measure_positions[measure_index-1]
-    #         # measure_sec_length = measure_seocnds[measure_index] - measure_seocnds[measure_index-1]
-    #     # length_tuple = (measure_length, measure_sec_length)
-    #     feature ={}
-    #     feature['pitch'] = note.pitch[1]
-    #     feature['pitch_interval'] = calculate_pitch_interval(xml_notes, i)
-    #     feature['duration'] = note.note_duration.duration / measure_length
-    #     feature['duration_ratio'] = calculate_duration_ratio(xml_notes, i)
-    #     feature['beat_position'] = (note_position-measure_positions[measure_index]) / measure_length
-    #     feature['voice'] = note.voice
-    #     feature['xml_position'] = note.note_duration.xml_position / total_length_tuple[0]
-    #     feature['grace_order'] = note.note_duration.grace_order
-    #
-    #     dynamic_words = dynamic_words_flatten(note)
-    #     feature['dynamic'] = keyword_into_onehot(dynamic_words, dynamics_merged_keys)
-    #     feature['tempo'] = keyword_into_onehot(note.tempo.absolute, tempos_merged_key)
-    #     feature['notation'] = note_notation_to_vector(note)
         feature= score_features[i]
         if not pairs[i] == []:
             feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, total_length_tuple)
@@ -343,6 +320,9 @@ def extract_perform_features(xml_notes, pairs, measure_positions):
             feature['pedal_cut'] = int(pairs[i]['midi'].pedal_cut)
             feature['pedal_cut_time'] = int(pairs[i]['midi'].pedal_cut)
             feature['soft_pedal'] = pairs[i]['midi'].soft_pedal
+
+            if not feature['melody']:
+                feature['IOI_ratio'] = 0
 
         else:
             feature['IOI_ratio'] = None
