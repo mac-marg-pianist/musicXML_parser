@@ -5,16 +5,13 @@ from __future__ import division
 import csv
 import math
 import os
-import midi_utils.midi_utils as midi_utils
 import pretty_midi
 from mxp import MusicXMLDocument
 # import sys
 # # sys.setdefaultencoding() does not exist, here!
 # reload(sys)  # Reload does the trick!
 # sys.setdefaultencoding('UTF8')
-import types
 import midi_utils.midi_utils as midi_utils
-import numpy as np
 
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
@@ -899,7 +896,7 @@ def save_midi_notes_as_piano_midi(midi_notes, output_name, bool_pedal=False, dis
         for pedal in pedals:
             if pedal.time <0.3:
                 continue
-            if pedal < 75:
+            if pedal.value < 75:
                 previous_off_time = pedal.time
             else:
                 time_passed = pedal.time - previous_off_time
@@ -1245,7 +1242,7 @@ def check_overlapped_notes(xml_notes):
     return xml_notes
 
 
-def read_xml_to_numpy(path_name, means, stds):
+def read_xml_to_array(path_name, means, stds):
     xml_name = path_name + 'musicxml_cleaned.musicxml'
     midi_name = path_name + 'midi_cleaned.mid'
 
@@ -1275,5 +1272,4 @@ def read_xml_to_numpy(path_name, means, stds):
         #                     (feat['beat_position']-means[0][4])/stds[0][4]]
         #                    + feat['tempo'] + feat['dynamic'] + feat['notation'] )
 
-    test_x = np.asarray(test_x)
-    return test_x
+    return test_x, xml_notes
