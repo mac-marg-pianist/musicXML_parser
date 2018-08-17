@@ -14,7 +14,7 @@ import pretty_midi
 # midi.mid in same subdirectory will be regarded as score file.
 # make alignment result files in same directory. read Nakamura's manual for detail.
 
-INPUT_DIR = '/home/ilcobo2/chopin'
+INPUT_DIR = '/Users/Da/Documents/Github/musicXML-parser/chopin_cleaned/'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_dir", default=INPUT_DIR,
