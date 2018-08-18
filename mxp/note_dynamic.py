@@ -8,6 +8,8 @@ class NoteTempo:
     def __init__(self):
         self.absolute = None
         self.relative = []
+        self.time_numerator = 0
+        self.time_denominator = 0
 
 
 class NotePedal:
