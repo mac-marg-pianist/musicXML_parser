@@ -10,7 +10,7 @@ import pickle
 # folderDir = 'chopin/Chopin_Polonaises/61/'
 folderDir = 'chopin_cleaned/Chopin_Ballade/1/'
 # folderDir = 'mxp/testdata/dummy/chopin_ballade3/'
-artistName = 'Day04'
+artistName = 'Dossin05'
 # artistName = 'CHEN03'
 xmlname = 'musicxml_cleaned.musicxml'
 # xmlname = 'xml.xml'
@@ -111,9 +111,8 @@ features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perf
 # ioi_list = []
 # articul_list =[]
 # loudness_list = []
-for feat in features:
-    print(feat['IOI_ratio'], feat['pitch'])
-
+# for feat in features:
+    # print(feat['qpm'], feat['pitch'])
     # if not feat['IOI_ratio'] == None:
         # ioi_list.append(feat['IOI_ratio'])
         # articul_list.append(feat['articulation'])
@@ -133,7 +132,7 @@ new_midi = xml_matching.xml_notes_to_midi(new_xml)
 # # for note in new_midi:
 # #     print(note)
 # #
-xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid', bool_pedal=True)
+xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid', bool_pedal=False)
 
 
 # load and save data
