@@ -98,11 +98,11 @@ def add_pedal_inf_to_notes(midi_obj):
         # note.sostenuto_cut = check_pedal_cut(note, notes, sostenuto_pedals,
         #                                                                 sostenuto_pedals_positions)
 
-    new_notes = [0] * len(notes)
-    for note in notes:
-        old_index = saved_notes.index(note)
-        new_notes[old_index] = note
-    midi_obj.instruments[0].notes = new_notes
+    # new_notes = [0] * len(notes)
+    # for note in notes:
+    #     old_index = saved_notes.index(note)
+    #     new_notes[old_index] = note
+    # midi_obj.instruments[0].notes = new_notes
     return midi_obj
 
 def cal_pedal_refresh_in_note(note, notes, pedals, pedals_positions, pd_ind1, pd_ind2):
@@ -157,7 +157,7 @@ def cal_pedal_cut(note, notes, pedals, pedals_positions, threshold=30):
         if pedal.value < lowest_pedal_value:
             lowest_pedal_value = pedal.value
             lowest_pedal = pedal
-
+    notes.sort(key=lambda x:x.start)
     if lowest_pedal:
         time_ratio = (note.start - lowest_pedal.start) / (note.end - note.start)
         return lowest_pedal_value, time_ratio
@@ -347,14 +347,14 @@ def save_note_pedal_to_CC(midi_obj):
     notes = instrument.notes
     notes.sort(key=lambda note:note.start)
     num_notes = len(notes)
-    eps = 0.05
+    eps = 0.01
 
     def to_8(value):
         # if value == True:
         #     return 127
         # else:
         #     return 0
-        return min(max(int(value),0),127)
+        return int(min(max(value,0),127))
 
     for i in range(num_notes):
         note = notes[i]
