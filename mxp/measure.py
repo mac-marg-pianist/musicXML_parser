@@ -33,7 +33,7 @@ class Measure(object):
     self.start_xml_position = self.state.xml_position
     self._parse()
     # Update the time signature if a partial or pickup measure
-    self._fix_time_signature()
+    # self._fix_time_signature()
 
   def _parse(self):
     """Parse the <measure> element."""
