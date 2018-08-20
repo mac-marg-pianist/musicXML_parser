@@ -8,9 +8,9 @@ import pickle
 
 # folderDir = 'mxp/testdata/chopin10-3/'
 # folderDir = 'chopin/Chopin_Polonaises/61/'
-folderDir = 'chopin_cleaned/Chopin_Etude_op_25/12/'
+folderDir = 'chopin_cleaned/Chopin_Ballade/1/'
 # folderDir = 'mxp/testdata/dummy/chopin_ballade3/'
-artistName = 'Kunz03'
+artistName = 'Day04'
 # artistName = 'CHEN03'
 xmlname = 'musicxml_cleaned.musicxml'
 # xmlname = 'xml.xml'
@@ -29,6 +29,11 @@ score_midi_notes.sort(key=lambda note: note.start)
 perform_midi_notes = perform_midi.instruments[0].notes
 corresp = xml_matching.read_corresp(folderDir + artistName + "_infer_corresp.txt")
 score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,score_midi_notes, perform_midi_notes, corresp)
+
+# for pair in perform_pairs:
+#     if not pair ==[]:
+#         print(pair['midi'])
+#         print(pair['xml'])
 
 # for note in perform_midi_notes:
 #     print(note.pedal_at_start, note.pedal_at_end, note.pedal_refresh, note.pedal_cut)
@@ -62,10 +67,10 @@ score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,sc
 #     #     print('XML Note pitch:', pair['xml'].pitch , ' and time: ', pair['xml'].note_duration.time_position , '-- MIDI: ', pair['midi'])
 # print('Number of non matched XML notes: ', non_matched_count)
 
-directions = xml_matching.extract_directions(XMLDocument)
+directions, time_signatures = xml_matching.extract_directions(XMLDocument)
 # for dir in directions:
 #     print(dir)
-melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
+melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions, time_signatures)
 # #
 # for note in melody_notes:
 #     # print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo)
@@ -89,7 +94,10 @@ melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions)
 
 #
 measure_positions = xml_matching.extract_measure_position(XMLDocument)
-features = xml_matching.extract_perform_features(melody_notes, perform_pairs, measure_positions)
+previous_pos=0
+for i in range(len(measure_positions)-1):
+    print('measure ' + str(i+1) + ' position is ' + str(measure_positions[i]) + ' and length is' + str(measure_positions[i+1]-measure_positions[i]))
+features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perform_pairs, measure_positions)
 
 # melody = xml_matching.extract_melody_only_from_notes(melody_notes)
 # for note in melody:
@@ -103,12 +111,23 @@ features = xml_matching.extract_perform_features(melody_notes, perform_pairs, me
 # ioi_list = []
 # articul_list =[]
 # loudness_list = []
-# for feat in features:
-#     # print(feat['IOI_ratio'])
-#     if not feat['IOI_ratio'] == None:
-#         # ioi_list.append(feat['IOI_ratio'])
-#         # articul_list.append(feat['articulation'])
-#         # loudness_list.append(feat['loudness'])
+# for i in range(len(features)):
+#     feat = features[i]
+#     note = melody_notes[i]
+#     print(feat['articulation'])
+    # if not feat['IOI_ratio'] == None:
+        # ioi_list.append(feat['IOI_ratio'])
+        # articul_list.append(feat['articulation'])
+        # loudness_list.append(feat['loudness'])
+
+time_signatures = XMLDocument.get_time_signatures()
+
+for i in range(10):
+    print(perform_midi_notes[i])
+
+for time in time_signatures:
+    print(time)
+
 
 # feature_list = [ioi_list, articul_list, loudness_list]
 # #
@@ -116,12 +135,13 @@ features = xml_matching.extract_perform_features(melody_notes, perform_pairs, me
 
 # new_midi = xml_matching.applyIOI(melody_notes, score_midi_notes, features, feature_list)
 
-new_xml = xml_matching.apply_perform_features(melody_notes, features)
+new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = perform_midi_notes[0].start)
+# new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = 0.518162)
 new_midi = xml_matching.xml_notes_to_midi(new_xml)
-#
-# for note in new_midi:
-#     print(note)
-#
+# #
+# # for note in new_midi:
+# #     print(note)
+# #
 xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid', bool_pedal=True)
 
 
