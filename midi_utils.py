@@ -347,7 +347,7 @@ def save_note_pedal_to_CC(midi_obj):
     notes = instrument.notes
     notes.sort(key=lambda note:note.start)
     num_notes = len(notes)
-    eps = 0.01
+    eps = 0.05
 
     def to_8(value):
         # if value == True:
