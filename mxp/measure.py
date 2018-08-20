@@ -25,6 +25,7 @@ class Measure(object):
     # Cumulative duration in MusicXML duration.
     # Used for time signature calculations
     self.duration = 0
+    self.implicit = False
     self.state = state
     # Record the starting time of this measure so that time signatures
     # can be inserted at the beginning of the measure
@@ -32,13 +33,16 @@ class Measure(object):
     self.start_xml_position = self.state.xml_position
     self._parse()
     # Update the time signature if a partial or pickup measure
-    self._fix_time_signature()
+    # self._fix_time_signature()
 
   def _parse(self):
     """Parse the <measure> element."""
     # Create new direction
     #direction = []
+    if 'implicit' in self.xml_measure.attrib.keys():
+      self.implicit = self.xml_measure.attrib['implicit']
     for child in self.xml_measure:
+
       if child.tag == 'attributes':
         self._parse_attributes(child)
       elif child.tag == 'backup':
