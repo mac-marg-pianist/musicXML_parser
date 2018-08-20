@@ -103,12 +103,12 @@ features = xml_matching.extract_perform_features(melody_notes, perform_pairs, me
 # ioi_list = []
 # articul_list =[]
 # loudness_list = []
-# for feat in features:
-#     # print(feat['IOI_ratio'])
-#     if not feat['IOI_ratio'] == None:
-#         # ioi_list.append(feat['IOI_ratio'])
-#         # articul_list.append(feat['articulation'])
-#         # loudness_list.append(feat['loudness'])
+for feat in features:
+    print(feat['IOI_ratio'], feat['pitch'])
+    # if not feat['IOI_ratio'] == None:
+        # ioi_list.append(feat['IOI_ratio'])
+        # articul_list.append(feat['articulation'])
+        # loudness_list.append(feat['loudness'])
 
 # feature_list = [ioi_list, articul_list, loudness_list]
 # #
