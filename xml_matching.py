@@ -16,7 +16,7 @@ import copy
 
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
-                            'presto', 'prestissimo', 'maestoso', 'lullaby', 'tempo i']
+                            'presto', 'prestissimo', 'maestoso', 'lullaby', 'tempo i', 'Freely, with expression']
 relative_tempos_keywords = ['animato', 'pesante', 'veloce', 'agitato',
                             'acc', 'accel', 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto',
                             'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando', 'smorzando', 'appassionato']
@@ -1982,9 +1982,9 @@ def define_dyanmic_embedding_table():
 def define_tempo_embedding_table():
     # [abs tempo, abs_tempo_added, tempo increase or decrease, sudden change]
     embed_table = EmbeddingTable()
-
-    embed_table.append(EmbeddingKey('lento', 0, 0.05))
-    embed_table.append(EmbeddingKey('adagio', 0, 0.1))
+    embed_table.append(EmbeddingKey('Freely, with expression', 0, 0.2))
+    embed_table.append(EmbeddingKey('lento', 0, 0.15))
+    embed_table.append(EmbeddingKey('adagio', 0, 0.2))
     embed_table.append(EmbeddingKey('andante', 0, 0.3))
     embed_table.append(EmbeddingKey('andantino', 0, 0.4))
     embed_table.append(EmbeddingKey('moderato', 0, 0.5))
