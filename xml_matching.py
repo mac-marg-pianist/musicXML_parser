@@ -399,7 +399,7 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
     feat_len = len(score_features)
 
 
-    tempos = cal_tempo(xml_doc, pairs)
+    tempos = cal_tempo(xml_doc, pairs, score_features)
     # for tempo in tempos:
     #     print(tempo.qpm, tempo.time_position, tempo.end_time)
     previous_qpm = 1
@@ -1731,7 +1731,7 @@ class Tempo:
         return string
 
 
-def cal_tempo(xml_doc, pairs):
+def cal_tempo(xml_doc, pairs, features):
     beats = cal_beat_positions_of_piece(xml_doc)
     xml_notes = extract_notes(xml_doc, melody_only=False, grace_note=True)
     xml_positions = [note.note_duration.xml_position for note in xml_notes]
@@ -1777,6 +1777,8 @@ def cal_tempo(xml_doc, pairs):
         tempos.append(tempo)        #
         previous_end = next_pos_pair.xml_position
 
+        feat = features[current_pos_pair.index]
+        feat.is_beat = True
         # note_index = binaryIndex(xml_positions, beat)
         # while pairs[note_index] == [] and note_index >0:
         #     note_index += -1
