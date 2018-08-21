@@ -293,6 +293,7 @@ class MusicFeature():
         self.duration = None
         self.duration_ratio = None
         self.beat_position = None
+        self.measure_length = None
         self.voice = None
         self.xml_position = None
         self.grace_order = None
@@ -342,9 +343,11 @@ def extract_score_features(xml_notes, measure_positions, beats=None):
 
         feature.pitch = note.pitch[1]
         feature.pitch_interval = calculate_pitch_interval(xml_notes, i)
-        feature.duration = note.note_duration.duration / measure_length
+        # feature.duration = note.note_duration.duration / measure_length
+        feature.duration = note.note_duration.duration / note.state_fixed.divisions
         feature.duration_ratio = calculate_duration_ratio(xml_notes, i)
         feature.beat_position = (note_position - measure_positions[measure_index]) / measure_length
+        feature.measure_length = measure_length / note.state_fixed.divisions
         feature.voice = note.voice
         feature.xml_position = note.note_duration.xml_position / total_length
         feature.grace_order = note.note_duration.grace_order
@@ -1577,7 +1580,8 @@ def read_xml_to_array(path_name, means, stds):
         # if not feat['pitch_interval'] == None:
         temp_x = [ (feat.pitch-means[0][0])/stds[0][0],  (feat.pitch_interval-means[0][1])/stds[0][1] ,
                         (feat.duration - means[0][2]) / stds[0][2],(feat.duration_ratio-means[0][3])/stds[0][3],
-                        (feat.beat_position-means[0][4])/stds[0][4], (feat.voice-means[0][5])/stds[0][5],
+                        (feat.beat_position-means[0][4])/stds[0][4], (feat.measure_length-means[0][5])/stds[0][5],
+                   feat.voice,
                         feat.xml_position, feat.grace_order, feat.time_sig_num, feat.time_sig_den]\
                  + feat.tempo + feat.dynamic + feat.notation
         # temp_x.append(feat.is_beat)

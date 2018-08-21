@@ -35,6 +35,7 @@ class Note(object):
         self.chord_index = 0
         self.pedal = NotePedal()
         self.followed_note = None # for grace note
+        self.on_beat = False
 
         self._parse()
 
@@ -173,7 +174,8 @@ class Note(object):
 
         note_string += ', voice: ' + str(self.voice)
         note_string += ', velocity: ' + str(self.velocity) + '} '
-        note_string += '(@time: ' + str(self.note_duration.time_position) + ')'
+        note_string += '(@time: ' + str(self.note_duration.time_position) + ') '
+        note_string += '(@xml: ' + str(self.note_duration.xml_position) + ')'
         return note_string
 
         pass
