@@ -71,13 +71,13 @@ directions, time_signatures = xml_matching.extract_directions(XMLDocument)
 # for dir in directions:
 #     print(dir)
 melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions, time_signatures)
-# #
+#
 # for note in melody_notes:
 #     # print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo)
-#     # print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo.absolute, note.note_notations)
-#     print(vars(note.note_notations))
-#     if not note.dynamic.relative == []:
-#         for rel in note.dynamic.relative:
+#     print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo.absolute) #, note.note_notations)
+#     # print(vars(note.note_notations))
+#     if not note.tempo.relative == []:
+#         for rel in note.tempo.relative:
 #             print(rel)
 #             print(rel.end_xml_position)
 
@@ -88,15 +88,15 @@ melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions, 
 #         pass
 
 # words = xml_matching.get_all_words_from_folders('chopin/')
-# for wrd in words:
-#     print (wrd)
+# # for wrd in words:
+# #     print (wrd)
 
 
 #
 measure_positions = xml_matching.extract_measure_position(XMLDocument)
-previous_pos=0
-for i in range(len(measure_positions)-1):
-    print('measure ' + str(i+1) + ' position is ' + str(measure_positions[i]) + ' and length is' + str(measure_positions[i+1]-measure_positions[i]))
+# previous_pos=0
+# for i in range(len(measure_positions)-1):
+#     print('measure ' + str(i+1) + ' position is ' + str(measure_positions[i]) + ' and length is' + str(measure_positions[i+1]-measure_positions[i]))
 features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perform_pairs, measure_positions)
 
 # melody = xml_matching.extract_melody_only_from_notes(melody_notes)
@@ -125,14 +125,14 @@ features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perf
 
 # new_midi = xml_matching.applyIOI(melody_notes, score_midi_notes, features, feature_list)
 
-new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = perform_midi_notes[0].start)
+# new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = perform_midi_notes[0].start)
 # new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = 0.518162)
-new_midi = xml_matching.xml_notes_to_midi(new_xml)
+# new_midi = xml_matching.xml_notes_to_midi(new_xml)
 # #
 # # for note in new_midi:
 # #     print(note)
 # #
-xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid', bool_pedal=False)
+# xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid', bool_pedal=False)
 
 
 # load and save data

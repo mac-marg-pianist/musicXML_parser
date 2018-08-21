@@ -414,7 +414,7 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
             else:
                 print ('Error: qpm is zero')
             if tempo.qpm > 1000:
-                print(pairs[i]['xml'])
+                print('Need Check: qpm is ' + str(tempo.qpm))
             if tempo.qpm != save_qpm:
                 # feature.previous_tempo = math.log(previous_qpm, 10)
                 previous_qpm = save_qpm
