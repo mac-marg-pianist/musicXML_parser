@@ -16,20 +16,21 @@ import copy
 
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
-                            'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby', 'agitato']
-relative_tempos_keywords = ['acc', 'accel', 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto',
-                            'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando']
+                            'presto', 'prestissimo', 'maestoso', 'lullaby', 'tempo i']
+relative_tempos_keywords = ['animato', 'pesante', 'veloce', 'agitato',
+                            'acc', 'accel', 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto',
+                            'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando', 'smorzando', 'appassionato']
 
 tempos_keywords = absolute_tempos_keywords + relative_tempos_keywords
 tempos_merged_key = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
                      'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby', 'agitato',
                      ['acc', 'accel', 'accelerando'],['rit', 'ritardando', 'rall', 'rallentando'], 'ritenuto',
-                    'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando'  ]
+                    'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando' ]
 
 
 absolute_dynamics_keywords = ['ppp', 'pp', 'p', 'piano', 'mp', 'mf', 'f', 'forte', 'ff', 'fff', 'fp']
 relative_dynamics_keywords = ['crescendo', 'diminuendo', 'cresc', 'dim', 'dimin' 'sotto voce',
-                              'mezza voce', 'sf', 'fz', 'sfz', 'sffz']
+                              'mezza voce', 'sf', 'fz', 'sfz', 'sffz', 'con forza', 'con fuoco', 'smorzando', 'appassionato']
 
 dynamics_keywords = absolute_dynamics_keywords + relative_dynamics_keywords
 dynamics_merged_keys = ['ppp', 'pp', ['p', 'piano'], 'mp', 'mf', ['f', 'forte'], 'ff', 'fff', 'fp', ['crescendo', 'cresc'],  ['diminuendo', 'dim', 'dimin'],
@@ -325,6 +326,8 @@ def extract_score_features(xml_notes, measure_positions, beats=None):
     xml_length = len(xml_notes)
     melody_notes = extract_melody_only_from_notes(xml_notes)
     features = []
+    dynamic_embed_table = define_dyanmic_embedding_table()
+    tempo_embed_table = define_tempo_embedding_table()
 
     for i in range(xml_length):
         note = xml_notes[i]
@@ -355,12 +358,16 @@ def extract_score_features(xml_notes, measure_positions, beats=None):
         feature.time_sig_num = 1/note.tempo.time_numerator
         feature.time_sig_den = 1/note.tempo.time_denominator
 
-        dynamic_words = dynamic_words_flatten(note)
-        feature.dynamic = keyword_into_onehot(dynamic_words, dynamics_merged_keys)
-        feature.tempo = keyword_into_onehot(note.tempo.absolute, tempos_merged_key)
+        dynamic_words = direction_words_flatten(note.dynamic)
+        tempo_words = direction_words_flatten(note.tempo)
+
+        # feature.dynamic = keyword_into_onehot(dynamic_words, dynamics_merged_keys)
+        feature.dynamic = dynamic_embedding(dynamic_words, dynamic_embed_table)
+        feature.tempo = dynamic_embedding(tempo_words, tempo_embed_table, len_vec=3)
+        # feature.tempo = keyword_into_onehot(note.tempo.absolute, tempos_merged_key)
         feature.notation = note_notation_to_vector(note)
 
-
+        # print(feature.dynamic + feature.tempo)
 
         features.append(feature)
 
@@ -978,7 +985,39 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
         if start_position == previous_position:
             continue
 
-        qpm = 10 ** feat.qpm
+        if predicted:
+            qpm_saved = 10 ** feat.qpm
+            num_added = 1
+            next_beat = beats[i+1]
+            start_index = feat.index
+
+            for j in range(1,20):
+                if start_index-j < 0:
+                    break
+                previous_note = xml_notes[start_index-j]
+                previous_pos = previous_note.note_duration.xml_position
+                if previous_pos == start_position:
+                    qpm_saved += 10 ** features[start_index-j].qpm
+                    num_added += 1
+                else:
+                    break
+
+            for j in range(1,40):
+                if start_index + j >= num_notes:
+                    break
+                next_note = xml_notes[start_index+j]
+                next_position = next_note.note_duration.xml_position
+                if next_position < next_beat:
+                    qpm_saved += 10 ** features[start_index+j].qpm
+                    num_added += 1
+                else:
+                    break
+
+            qpm = qpm_saved / num_added
+            # print(qpm)
+        else:
+            qpm = 10 ** feat.qpm
+        # qpm = 10 ** feat.qpm
         divisions = feat.divisions
 
         if previous_tempo != 0:
@@ -1003,6 +1042,9 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
         passed_second = passed_duration / note.state_fixed.divisions / corresp_tempo.qpm * 60
 
         return previous_sec + passed_second
+
+    # for tempo in tempos:
+    #     print(tempo.time_position, tempo.end_time, tempo.qpm)
 
     for i in range(num_notes):
         note = xml_notes[i]
@@ -1077,7 +1119,7 @@ def make_available_note_feature_list(notes, features, predicted):
         minimum_time_interval = 0
     else:
         minimum_time_interval = 0.08
-    available_notes = save_lowest_note_on_same_position(available_notes, minimum_time_interval)
+        available_notes = save_lowest_note_on_same_position(available_notes, minimum_time_interval)
     return available_notes
 
 
@@ -1270,7 +1312,7 @@ def merge_start_end_of_direction(directions):
 def apply_directions_to_notes(xml_notes, directions, time_signatures):
     absolute_dynamics, relative_dynamics = get_dynamics(directions)
     absolute_dynamics_position = [dyn.xml_position for dyn in absolute_dynamics]
-    absolute_tempos = get_tempos(directions)
+    absolute_tempos, relative_tempos = get_tempos(directions)
     absolute_tempos_position = [tmp.xml_position for tmp in absolute_tempos]
     time_signatures_position = [time.xml_position for time in time_signatures]
 
@@ -1294,6 +1336,13 @@ def apply_directions_to_notes(xml_notes, directions, time_signatures):
                 note.dynamic.relative.append(rel)
         if len(note.dynamic.relative) >1:
             note = divide_cresc_staff(note)
+
+        for rel in relative_tempos:
+            if rel.xml_position > note_position:
+                continue
+            if note_position < rel.end_xml_position:
+                note.tempo.relative.append(rel)
+
     return xml_notes
 
 def divide_cresc_staff(note):
@@ -1366,6 +1415,15 @@ def get_dynamics(directions):
             relative_dynamics.append(abs)
         else:
             abs_dynamic_dummy.append(abs)
+            if abs.type['content'] == 'fp':
+                abs.type['content'] = 'f sfz'
+                abs2 = copy.copy(abs)
+                abs2.xml_position += 1
+                abs2.type['content'] = copy.copy(abs.type['content'])
+                abs2.type['content'] = 'p'
+                abs_dynamic_dummy.append(abs2)
+                print(abs)
+                print(abs2)
 
     absolute_dynamics = abs_dynamic_dummy
 
@@ -1390,9 +1448,32 @@ def get_dynamics(directions):
 
 def get_tempos(directions):
 
-    absolute_tempos = extract_directions_by_keywords(directions, tempos_keywords)
-    # relative_tempos = extract_directions_by_keywords(directions, relative_tempos_keywords)
-    return absolute_tempos
+    absolute_tempos = extract_directions_by_keywords(directions, absolute_tempos_keywords)
+    relative_tempos = extract_directions_by_keywords(directions, relative_tempos_keywords)
+
+    absolute_tempos_position = [tmp.xml_position for tmp in absolute_tempos]
+    num_abs_tempos = len(absolute_tempos)
+    num_rel_tempos = len(relative_tempos)
+
+    for abs in absolute_tempos:
+        if 'tempo i' in abs.type['content'].lower():
+            abs.type['content'] = absolute_tempos[0].type['content']
+
+    for i in range(num_rel_tempos):
+        rel = relative_tempos[i]
+        if i+1< num_rel_tempos:
+            rel.end_xml_position = relative_tempos[i+1].xml_position
+        index = binaryIndex(absolute_tempos_position, rel.xml_position)
+        rel.previous_tempo = absolute_tempos[index].type['content']
+        if index+1 < num_abs_tempos:
+            rel.next_tempo = absolute_tempos[index+1].type['content']
+            if not hasattr(rel, 'end_xml_position') or rel.end_xml_position > absolute_tempos_position[index+1]:
+                rel.end_xml_position = absolute_tempos_position[index+1]
+        if not hasattr(rel, 'end_xml_position'):
+            rel.end_xml_position = float("inf")
+
+
+    return absolute_tempos, relative_tempos
 
 
 def get_all_words_from_folders(path):
@@ -1401,13 +1482,15 @@ def get_all_words_from_folders(path):
               f == 'xml.xml']
 
     for xmlfile in xml_list:
+        print(xmlfile)
         xml_doc = MusicXMLDocument(xmlfile)
-        directions = extract_directions(xml_doc)
+        directions, _ = extract_directions(xml_doc)
 
-        words = [dir for dir in directions if dir.type['type'] =='words']
+        words = [dir for dir in directions if dir.type['type'] == 'words']
 
         for wrd in words:
             entire_words.append(wrd.type['content'])
+            print(wrd.type['content'])
 
     entire_words = list(set(entire_words))
     return entire_words
@@ -1442,15 +1525,15 @@ def keyword_into_onehot(attribute, keywords):
     return one_hot
 
 
-def dynamic_words_flatten(note):
-    dynamic_words = note.dynamic.absolute
-    if not note.dynamic.relative == []:
-        for rel in note.dynamic.relative:
+def direction_words_flatten(note_attribute):
+    flatten_words = note_attribute.absolute
+    if not note_attribute.relative == []:
+        for rel in note_attribute.relative:
             if rel.type['type'] == 'words':
-                dynamic_words = dynamic_words + ' ' + rel.type['content']
+                flatten_words = flatten_words + ' ' + rel.type['content']
             else:
-                dynamic_words = dynamic_words + ' ' + rel.type['type']
-    return dynamic_words
+                flatten_words = flatten_words + ' ' + rel.type['type']
+    return flatten_words
 
 def find_index_list_of_list(element, in_list):
     # isuni = isinstance(element, unicode) # for python 2.7
@@ -1569,6 +1652,8 @@ def read_xml_to_array(path_name, means, stds):
     beats = cal_beat_positions_of_piece(xml_object)
     xml_notes = extract_notes(xml_object, melody_only=False, grace_note=True)
     directions, time_signatures = extract_directions(xml_object)
+    for direction in directions:
+        print(direction)
     xml_notes = apply_directions_to_notes(xml_notes, directions, time_signatures)
 
     measure_positions = extract_measure_position(xml_object)
@@ -1786,3 +1871,166 @@ def check_note_on_beat(note, measure_start, measure_length):
     on_beat = int(position_ratio * num_beat_in_measure) == (position_ratio * num_beat_in_measure)
     return on_beat
 
+
+class EmbeddingTable():
+    def __init__(self):
+        self.keywords=[]
+        self.embed_key = []
+
+    def append(self, EmbeddingKey):
+        self.keywords.append(EmbeddingKey.key)
+        self.embed_key.append(EmbeddingKey)
+
+class EmbeddingKey():
+    def __init__(self, key_name, vec_idx, value):
+        self.key = key_name
+        self.vector_index = vec_idx
+        self.value = value
+
+
+
+def dynamic_embedding(dynamic_word, embed_table, len_vec=4):
+    dynamic_vector = [0] * len_vec
+    dynamic_vector[0] = 0.5
+    keywords = embed_table.keywords
+
+
+    if dynamic_word == None:
+        return dynamic_vector
+    if dynamic_word in embed_table.keywords:
+        index = find_index_list_of_list(dynamic_word, keywords)
+        vec_idx = embed_table.embed_key[index].vector_index
+        dynamic_vector[vec_idx] = embed_table.embed_key[index].value
+
+    # for i in range(len(keywords)):
+    #     keys = keywords[i]
+    #     if type(keys) is list:
+    #         for key in keys:
+    #             if len(key)>2 and (key.encode('utf-8') in
+    word_split = dynamic_word.replace(',', ' ').replace('.', ' ').split(' ')
+    for w in word_split:
+        index = find_index_list_of_list(w.lower(), keywords)
+        if index:
+            vec_idx = embed_table.embed_key[index].vector_index
+            dynamic_vector[vec_idx] = embed_table.embed_key[index].value
+
+    for key in keywords:
+        if isinstance(key, str) and len(key) > 2 and key in dynamic_word:
+            # if type(key) is st and len(key) > 2 and key in attribute:
+            index = keywords.index(key)
+            vec_idx = embed_table.embed_key[index].vector_index
+            dynamic_vector[vec_idx] = embed_table.embed_key[index].value
+
+    return dynamic_vector
+
+def define_dyanmic_embedding_table():
+    embed_table = EmbeddingTable()
+
+    embed_table.append(EmbeddingKey('ppp', 0, 0.05))
+    embed_table.append(EmbeddingKey('pp', 0, 0.2))
+    embed_table.append(EmbeddingKey('piano', 0, 35))
+    embed_table.append(EmbeddingKey('p', 0, 0.35))
+    embed_table.append(EmbeddingKey('mp', 0, 0.45))
+    embed_table.append(EmbeddingKey('mf', 0, 0.55))
+    embed_table.append(EmbeddingKey('f', 0, 0.65))
+    embed_table.append(EmbeddingKey('forte', 0, 0.65))
+    embed_table.append(EmbeddingKey('ff', 0, 0.8))
+    embed_table.append(EmbeddingKey('fff', 0, 0.95))
+
+    embed_table.append(EmbeddingKey('più p', 0, 0.3))
+    # embed_table.append(EmbeddingKey('più piano', 0, 0.3))
+    embed_table.append(EmbeddingKey('più f', 0, 0.7))
+    # embed_table.append(EmbeddingKey('più forte', 0, 0.7))
+    embed_table.append(EmbeddingKey('più forte possibile', 0, 1))
+
+
+
+    embed_table.append(EmbeddingKey('cresc', 1, 0.7))
+    # embed_table.append(EmbeddingKey('crescendo', 1, 1))
+    embed_table.append(EmbeddingKey('allargando', 1, 0.4))
+    embed_table.append(EmbeddingKey('dim', 1, -0.7))
+    # embed_table.append(EmbeddingKey('diminuendo', 1, -1))
+    embed_table.append(EmbeddingKey('decresc', 1, -0.7))
+    # embed_table.append(EmbeddingKey('decrescendo', 1, -1))
+
+    embed_table.append(EmbeddingKey('smorz', 1, -0.4))
+
+    embed_table.append(EmbeddingKey('poco a poco meno f', 1, -0.2))
+    embed_table.append(EmbeddingKey('poco cresc', 1, 0.5))
+    embed_table.append(EmbeddingKey('molto cresc', 1, 1))
+
+    # TODO: sotto voce, mezza voce
+
+    embed_table.append(EmbeddingKey('fz', 2, 0.3))
+    embed_table.append(EmbeddingKey('sf', 2, 0.5))
+    embed_table.append(EmbeddingKey('sfz', 2, 0.7))
+    embed_table.append(EmbeddingKey('ffz', 2, 0.8))
+    embed_table.append(EmbeddingKey('sffz', 2, 0.9))
+
+
+    embed_table.append(EmbeddingKey('con forza', 3, 0.5))
+    embed_table.append(EmbeddingKey('con fuoco', 3, 0.7))
+    embed_table.append(EmbeddingKey('con più fuoco possibile', 3, 1))
+    embed_table.append(EmbeddingKey('sotto voce', 3, -5))
+    embed_table.append(EmbeddingKey('mezza voce', 3, -0.3))
+    embed_table.append(EmbeddingKey('appassionato', 3, 0.5))
+
+
+    return embed_table
+
+
+def define_tempo_embedding_table():
+    # [abs tempo, abs_tempo_added, tempo increase or decrease, sudden change]
+    embed_table = EmbeddingTable()
+
+    embed_table.append(EmbeddingKey('lento', 0, 0.05))
+    embed_table.append(EmbeddingKey('adagio', 0, 0.1))
+    embed_table.append(EmbeddingKey('andante', 0, 0.3))
+    embed_table.append(EmbeddingKey('andantino', 0, 0.4))
+    embed_table.append(EmbeddingKey('moderato', 0, 0.5))
+    embed_table.append(EmbeddingKey('allegretto', 0, 0.6))
+    embed_table.append(EmbeddingKey('allegro', 0, 0.7))
+    embed_table.append(EmbeddingKey('vivace', 0, 0.8))
+    embed_table.append(EmbeddingKey('presto', 0, 0.9))
+    embed_table.append(EmbeddingKey('prestissimo', 0, 1))
+
+    embed_table.append(EmbeddingKey('molto allegro', 0, 0.85))
+
+    embed_table.append(EmbeddingKey('a tempo', 1, 0.05))
+    embed_table.append(EmbeddingKey('meno mosso', 1, -0.8))
+    embed_table.append(EmbeddingKey('ritenuto', 1, -0.5))
+    embed_table.append(EmbeddingKey('animato', 1, 0.5))
+    embed_table.append(EmbeddingKey('più animato', 1, 0.6))
+    embed_table.append(EmbeddingKey('agitato', 1, 0.7))
+    embed_table.append(EmbeddingKey('più mosso', 1, 0.8))
+    embed_table.append(EmbeddingKey('stretto', 1, 0.8))
+    embed_table.append(EmbeddingKey('appassionato', 1, 0.5))
+
+
+    embed_table.append(EmbeddingKey('poco ritenuto', 1, -0.3))
+    embed_table.append(EmbeddingKey('molto agitato', 1, 0.9))
+
+
+
+    embed_table.append(EmbeddingKey('allargando', 2, -0.2))
+    embed_table.append(EmbeddingKey('ritardando', 2, -0.5))
+    embed_table.append(EmbeddingKey('rit', 2, -0.5))
+    embed_table.append(EmbeddingKey('rallentando', 2, -0.5))
+    embed_table.append(EmbeddingKey('rall', 2, -0.5))
+    embed_table.append(EmbeddingKey('slentando', 2, -0.3))
+    embed_table.append(EmbeddingKey('acc', 2, 0.5))
+    embed_table.append(EmbeddingKey('accel', 2, 0.5))
+    embed_table.append(EmbeddingKey('accelerando', 2, 0.5))
+    embed_table.append(EmbeddingKey('smorz', 2, -0.5))
+
+
+    embed_table.append(EmbeddingKey('poco rall', 2, -0.3))
+    embed_table.append(EmbeddingKey('poco rit', 2, -0.3))
+
+    return embed_table
+
+
+['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
+                     'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby', 'agitato',
+                     ['acc', 'accel', 'accelerando'],['rit', 'ritardando', 'rall', 'rallentando'], 'ritenuto',
+                    'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando'  ]

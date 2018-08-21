@@ -20,9 +20,10 @@ class Direction(object):
     self.type = {'type': None, 'content': None}
     self.state = copy.copy(state)
     self.placement = None
-    self._parse()
     self.time_position = state.time_position
     self.xml_position = state.xml_position
+    self._parse()
+
 
   def _parse(self):
     """Parse the MusicXML <direction> element."""
@@ -142,7 +143,7 @@ class Direction(object):
     self.type = {'type':'metronome', 'content': xml_metronome.find('per-minute'), 'beat-unit': xml_metronome.find('beat-unit')}
 
   def __str__(self):
-    direction_string = '{type: ' + str(self.type['type']) + ' - ' + str(self.type['content'])
+    direction_string = '{type: ' + str(self.type['type']) + ' - ' + str(self.type['content'].encode('utf-8'))
     direction_string += ', xml_position: ' + str(self.xml_position)
     direction_string += ', staff: ' + str(self.staff) + '}'
     return direction_string
