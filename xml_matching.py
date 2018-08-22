@@ -403,7 +403,7 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
     # for tempo in tempos:
     #     print(tempo.qpm, tempo.time_position, tempo.end_time)
     previous_qpm = 1
-    save_qpm = 1
+    save_qpm = xml_notes[0].state_fixed.qpm
 
     for i in range(feat_len):
         feature= score_features[i]
