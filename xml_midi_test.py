@@ -10,7 +10,7 @@ import pickle
 # folderDir = 'chopin/Chopin_Polonaises/61/'
 folderDir = 'chopin_cleaned/Chopin_Ballade/1/'
 # folderDir = 'mxp/testdata/dummy/chopin_ballade3/'
-artistName = 'Dossin05'
+artistName = 'Day04'
 # artistName = 'CHEN03'
 xmlname = 'musicxml_cleaned.musicxml'
 # xmlname = 'xml.xml'
@@ -87,7 +87,7 @@ melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions, 
 #         # print(dir)
 #         pass
 
-words = xml_matching.get_all_words_from_folders('chopin_cleaned/')
+# words = xml_matching.get_all_words_from_folders('chopin_cleaned/')
 # # for wrd in words:
 # #     print (wrd)
 
@@ -125,14 +125,14 @@ features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perf
 
 # new_midi = xml_matching.applyIOI(melody_notes, score_midi_notes, features, feature_list)
 
-# new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = perform_midi_notes[0].start)
+new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = perform_midi_notes[0].start)
 # new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = 0.518162)
-# new_midi = xml_matching.xml_notes_to_midi(new_xml)
+new_midi = xml_matching.xml_notes_to_midi(new_xml)
 # #
 # # for note in new_midi:
 # #     print(note)
 # #
-# xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid', bool_pedal=False)
+xml_matching.save_midi_notes_as_piano_midi(new_midi, 'my_first_midi.mid', bool_pedal=False)
 
 
 # load and save data

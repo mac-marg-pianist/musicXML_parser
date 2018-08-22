@@ -197,6 +197,11 @@ def extract_notes(xml_Doc, melody_only = False, grace_note = False):
     notes = apply_tied_notes(notes)
     notes.sort(key=lambda x: (x.note_duration.xml_position, x.note_duration.grace_order, -x.pitch[1]))
     notes = check_overlapped_notes(notes)
+
+    notes = rearrange_chord_index(notes)
+    # for note in notes:
+    #     print(note.staff, note.voice, note.note_duration.xml_position, note.note_duration.duration, note.pitch[1], note.chord_index)
+
     return notes
 
 def check_notes_and_append(note, notes, previous_grace_notes, inc_grace_note):
@@ -302,6 +307,7 @@ class MusicFeature():
         self.time_sig_num = None
         self.time_sig_den = None
         self.is_beat = False
+        self.following_rest = 0
 
         self.dynamic  = None
         self.tempo = None
@@ -345,10 +351,11 @@ def extract_score_features(xml_notes, measure_positions, beats=None):
 
 
         feature.pitch = note.pitch[1]
-        feature.pitch_interval = calculate_pitch_interval(xml_notes, i)
+        # feature.pitch_interval = calculate_pitch_interval(xml_notes, i)
         # feature.duration = note.note_duration.duration / measure_length
         feature.duration = note.note_duration.duration / note.state_fixed.divisions
-        feature.duration_ratio = calculate_duration_ratio(xml_notes, i)
+        # feature.duration_ratio = calculate_duration_ratio(xml_notes, i)
+        feature.pitch_interval, feature.duration_ratio, feature.following_rest = cal_pitch_interval_and_duration_ratio(xml_notes, i)
         feature.beat_position = (note_position - measure_positions[measure_index]) / measure_length
         feature.measure_length = measure_length / note.state_fixed.divisions
         feature.voice = note.voice
@@ -515,6 +522,81 @@ def calculate_mean_velocity(pairs):
             length += 1
 
     return sum/float(length)
+
+
+def rearrange_chord_index(xml_notes):
+    # assert all(xml_notes[i].pitch[1] >= xml_notes[i + 1].pitch[1] for i in range(len(xml_notes) - 1)
+    #            if xml_notes[i].note_duration.xml_position ==xml_notes[i+1].note_duration.xml_position)
+
+    previous_position = [-1]
+    max_chord_index = [0]
+    for note in xml_notes:
+        voice = note.voice -1
+        print(voice)
+        while voice >= len(previous_position):
+            previous_position.append(-1)
+            max_chord_index.append(0)
+        if note.note_duration.is_grace_note:
+            continue
+        if note.staff ==1:
+            if note.note_duration.xml_position > previous_position[voice]:
+                previous_position[voice] = note.note_duration.xml_position
+                max_chord_index[voice] = note.chord_index
+                note.chord_index = 0
+            else:
+                note.chord_index = (max_chord_index[voice] - note.chord_index)
+        else: #note staff ==2
+            pass
+
+    return xml_notes
+
+
+def cal_pitch_interval_and_duration_ratio(xml_notes, index):
+    search_index = 1
+    num_notes = len(xml_notes)
+    note = xml_notes[index]
+    candidate_notes = []
+    next_position = note.note_duration.xml_position + note.note_duration.duration
+    while index+search_index <num_notes:
+        print(index+search_index)
+        next_note = xml_notes[index+search_index]
+        if next_note.note_duration.xml_position == next_position:
+            if next_note.voice == note.voice and not next_note.note_duration.is_grace_note:
+                if next_note.chord_index == note.chord_index:
+                    pitch_interval = next_note.pitch[1] - note.pitch[1]
+                    if note.note_duration.is_grace_note:
+                        duration_ratio = 0
+                    else:
+                        duration_ratio = math.log(next_note.note_duration.duration / note.note_duration.duration, 10)
+                    return pitch_interval, duration_ratio,0
+                else:
+                    candidate_notes.append(next_note)
+        elif next_note.note_duration.xml_position > next_position:
+            # there is no notes to search further
+
+            if len(candidate_notes) > 0:
+                closest_pitch = float('inf')
+                closest_note = None
+                for cand_note in candidate_notes:
+                    temp_interval = cand_note.pitch[1] - note.pitch[1]
+                    if abs(temp_interval)<closest_pitch:
+                        closest_pitch = abs(temp_interval)
+                        closest_note = cand_note
+                if note.note_duration.is_grace_note:
+                    duration_ratio = 0
+                else:
+                    duration_ratio = math.log(cand_note.note_duration.duration / note.note_duration.duration, 10)
+                return temp_interval, duration_ratio, 0
+            else:
+                if next_note.voice == note.voice:
+                    rest_duration = (next_note.note_duration.xml_position - next_position) / note.state_fixed.divisions
+                    return 0, 0, rest_duration
+                else:
+                    search_index += 1
+
+        search_index += 1
+
+    return 0, 0, 0
 
 def calculate_pitch_interval(xml_notes, index):
     search_index = 1
