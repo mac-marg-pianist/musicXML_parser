@@ -16,8 +16,8 @@ import copy
 
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
-                            'presto', 'prestissimo', 'maestoso', 'lullaby', 'tempo i', 'Freely, with expression']
-relative_tempos_keywords = ['animato', 'pesante', 'veloce', 'agitato',
+                            'presto', 'prestissimo', 'maestoso', 'lullaby', 'tempo i', 'Freely, with expression', 'agitato']
+relative_tempos_keywords = ['animato', 'pesante', 'veloce',
                             'acc', 'accel', 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto',
                             'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando', 'smorzando', 'appassionato']
 
@@ -195,7 +195,7 @@ def extract_notes(xml_Doc, melody_only = False, grace_note = False):
     if melody_only:
         notes = delete_chord_notes_for_melody(notes)
     notes = apply_tied_notes(notes)
-    notes.sort(key=lambda x: (x.note_duration.xml_position, x.note_duration.grace_order, x.pitch[1]))
+    notes.sort(key=lambda x: (x.note_duration.xml_position, x.note_duration.grace_order, -x.pitch[1]))
     notes = check_overlapped_notes(notes)
     return notes
 
@@ -1419,11 +1419,9 @@ def get_dynamics(directions):
                 abs.type['content'] = 'f sfz'
                 abs2 = copy.copy(abs)
                 abs2.xml_position += 1
-                abs2.type['content'] = copy.copy(abs.type['content'])
+                abs2.type = copy.copy(abs.type)
                 abs2.type['content'] = 'p'
                 abs_dynamic_dummy.append(abs2)
-                print(abs)
-                print(abs2)
 
     absolute_dynamics = abs_dynamic_dummy
 
@@ -1479,7 +1477,7 @@ def get_tempos(directions):
 def get_all_words_from_folders(path):
     entire_words = []
     xml_list = [os.path.join(dp, f) for dp, dn, filenames in os.walk(path) for f in filenames if
-              f == 'xml.xml']
+              f == 'musicxml_cleaned.musicxml']
 
     for xmlfile in xml_list:
         print(xmlfile)
@@ -1490,7 +1488,7 @@ def get_all_words_from_folders(path):
 
         for wrd in words:
             entire_words.append(wrd.type['content'])
-            print(wrd.type['content'])
+            print(wrd.type['content'], wrd.state.qpm)
 
     entire_words = list(set(entire_words))
     return entire_words
@@ -1777,7 +1775,17 @@ def cal_tempo(xml_doc, pairs, features):
         tempos.append(tempo)        #
         previous_end = next_pos_pair.xml_position
 
-        feat = features[current_pos_pair.index]
+
+        current_index = current_pos_pair.index
+        feat = features[current_index]
+        feat.is_beat = True
+        num = 1
+        while current_index - num >= 0 and xml_notes[current_index - num].note_duration.xml_position == cur_xml:
+            feat = features[current_index - num]
+            feat.is_beat = True
+            num += 1
+
+
         feat.is_beat = True
         # note_index = binaryIndex(xml_positions, beat)
         # while pairs[note_index] == [] and note_index >0:

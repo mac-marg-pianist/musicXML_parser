@@ -87,7 +87,7 @@ melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions, 
 #         # print(dir)
 #         pass
 
-# words = xml_matching.get_all_words_from_folders('chopin/')
+words = xml_matching.get_all_words_from_folders('chopin_cleaned/')
 # # for wrd in words:
 # #     print (wrd)
 
