@@ -308,6 +308,8 @@ class MusicFeature():
         self.time_sig_den = None
         self.is_beat = False
         self.following_rest = 0
+        self.tempo_primo = None
+        self.qpm_primo = None
 
         self.dynamic  = None
         self.tempo = None
@@ -326,14 +328,23 @@ class MusicFeature():
         self.pedal_cut_time = None
         self.soft_pedal = None
         self.midi_start  = None
+        self.passed_second = None
+        self.duration_second = None
 
-def extract_score_features(xml_notes, measure_positions, beats=None):
+
+def extract_score_features(xml_notes, measure_positions, beats=None, qpm_primo=0):
     features = []
     xml_length = len(xml_notes)
     melody_notes = extract_melody_only_from_notes(xml_notes)
     features = []
     dynamic_embed_table = define_dyanmic_embedding_table()
     tempo_embed_table = define_tempo_embedding_table()
+
+    if qpm_primo == 0:
+        qpm_primo = xml_notes[0].state_fixed.qpm
+    tempo_primo_word = direction_words_flatten(xml_notes[0].tempo)
+    tempo_primo = dynamic_embedding(tempo_primo_word, tempo_embed_table, 3)
+    tempo_primo = tempo_primo[0:2]
 
     for i in range(xml_length):
         note = xml_notes[i]
@@ -373,6 +384,9 @@ def extract_score_features(xml_notes, measure_positions, beats=None):
         feature.tempo = dynamic_embedding(tempo_words, tempo_embed_table, len_vec=3)
         # feature.tempo = keyword_into_onehot(note.tempo.absolute, tempos_merged_key)
         feature.notation = note_notation_to_vector(note)
+        feature.qpm_primo = math.log(qpm_primo,10)
+        feature.tempo_primo = tempo_primo
+
 
         # print(feature.dynamic + feature.tempo)
 
@@ -411,6 +425,7 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
     #     print(tempo.qpm, tempo.time_position, tempo.end_time)
     previous_qpm = 1
     save_qpm = xml_notes[0].state_fixed.qpm
+    previous_second = None
 
     for i in range(feat_len):
         feature= score_features[i]
@@ -426,7 +441,6 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
                 # feature.previous_tempo = math.log(previous_qpm, 10)
                 previous_qpm = save_qpm
                 save_qpm = tempo.qpm
-
 
 
             feature.articulation = cal_articulation_with_tempo(pairs, i , tempo.qpm)
@@ -445,9 +459,12 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
             feature.midi_start = pairs[i]['midi'].start # just for reproducing and testing perform features
             feature.previous_tempo = math.log(previous_qpm, 10)
 
-
-
-            # print(tempo.qpm, 10**feature.previous_tempo , save_qpm)
+            if previous_second == None:
+                feature.passed_second = 0
+            else:
+                feature.passed_second = pairs[i]['midi'].start - previous_second
+            feature.duration_second = pairs[i]['midi'].end - pairs[i]['midi'].start
+            previous_second = pairs[i]['midi'].start
             # if not feature['melody'] and not feature['IOI_ratio'] == None :
             #     feature['IOI_ratio'] = 0
 
@@ -532,7 +549,6 @@ def rearrange_chord_index(xml_notes):
     max_chord_index = [0]
     for note in xml_notes:
         voice = note.voice -1
-        print(voice)
         while voice >= len(previous_position):
             previous_position.append(-1)
             max_chord_index.append(0)
@@ -558,7 +574,6 @@ def cal_pitch_interval_and_duration_ratio(xml_notes, index):
     candidate_notes = []
     next_position = note.note_duration.xml_position + note.note_duration.duration
     while index+search_index <num_notes:
-        print(index+search_index)
         next_note = xml_notes[index+search_index]
         if next_note.note_duration.xml_position == next_position:
             if next_note.voice == note.voice and not next_note.note_duration.is_grace_note:
@@ -1096,7 +1111,6 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
                     break
 
             qpm = qpm_saved / num_added
-            # print(qpm)
         else:
             qpm = 10 ** feat.qpm
         # qpm = 10 ** feat.qpm
@@ -1124,9 +1138,6 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
         passed_second = passed_duration / note.state_fixed.divisions / corresp_tempo.qpm * 60
 
         return previous_sec + passed_second
-
-    # for tempo in tempos:
-    #     print(tempo.time_position, tempo.end_time, tempo.qpm)
 
     for i in range(num_notes):
         note = xml_notes[i]
@@ -1160,6 +1171,42 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
 
     return xml_notes
 
+def apply_time_position_features(xml_notes, features, start_time=0):
+    num_notes = len(xml_notes)
+    tempos = []
+    # xml_positions = [x.note_duration.xml_position for x in xml_notes]
+    prev_vel = 64
+    current_sec = start_time
+
+    valid_notes = []
+    previous_position = start_time
+    for i in range(num_notes):
+        note = xml_notes[i]
+        feat = features[i]
+        if feat.passed_second == None:
+            continue
+        note.note_duration.time_position = current_sec + feat.passed_second
+        current_sec += feat.passed_second
+
+        # if not feat['xml_deviation'] == None:
+        #     note.note_duration.time_position += feat['xml_deviation']
+
+        note.note_duration.seconds = feat.duration_second
+        feat.articulation = 1
+        note, prev_vel = apply_feat_to_a_note(note, feat, prev_vel)
+
+        valid_notes.append(note)
+
+    # for i in range(num_notes):
+    #     note = xml_notes[i]
+    #     feat = features[i]
+    #
+    #     if note.note_duration.is_grace_note:
+    #         followed_note = note.followed_note
+    #         next_second = followed_note.note_duration.time_position
+    #         note.note_duration.seconds = (next_second - note.note_duration.time_position) / note.note_duration.num_grace
+
+    return valid_notes
 
 def make_available_note_feature_list(notes, features, predicted):
     class PosTempoPair:
@@ -1663,8 +1710,6 @@ def xml_notes_to_midi(xml_notes):
         pitch = note.pitch[1]
         start = note.note_duration.time_position
         end = start + note.note_duration.seconds
-        if math.isinf(end):
-            print(note)
         if note.note_duration.seconds <0.005:
             end = start + 0.005
         velocity = int(min(max(note.velocity,0),127))
@@ -1719,7 +1764,7 @@ def check_overlapped_notes(xml_notes):
     return xml_notes
 
 
-def read_xml_to_array(path_name, means, stds):
+def read_xml_to_array(path_name, means, stds, start_tempo):
     xml_name = path_name + 'musicxml_cleaned.musicxml'
     midi_name = path_name + 'midi_cleaned.mid'
 
@@ -1732,12 +1777,14 @@ def read_xml_to_array(path_name, means, stds):
     beats = cal_beat_positions_of_piece(xml_object)
     xml_notes = extract_notes(xml_object, melody_only=False, grace_note=True)
     directions, time_signatures = extract_directions(xml_object)
-    for direction in directions:
-        print(direction)
     xml_notes = apply_directions_to_notes(xml_notes, directions, time_signatures)
 
     measure_positions = extract_measure_position(xml_object)
-    features = extract_score_features(xml_notes, measure_positions, beats)
+    features = extract_score_features(xml_notes, measure_positions, beats, start_tempo)
+
+    for i in range(len(stds[0])):
+        if stds[0][i] == 0:
+            stds[0][i] = 1
 
     test_x = []
     is_beat_list = []
@@ -1746,9 +1793,9 @@ def read_xml_to_array(path_name, means, stds):
         temp_x = [ (feat.pitch-means[0][0])/stds[0][0],  (feat.pitch_interval-means[0][1])/stds[0][1] ,
                         (feat.duration - means[0][2]) / stds[0][2],(feat.duration_ratio-means[0][3])/stds[0][3],
                         (feat.beat_position-means[0][4])/stds[0][4], (feat.measure_length-means[0][5])/stds[0][5],
-                   feat.voice,
+                   (feat.voice - means[0][6]) / stds[0][6], (feat.qpm_primo - means[0][7]) / stds[0][7],
                         feat.xml_position, feat.grace_order, feat.time_sig_num, feat.time_sig_den]\
-                 + feat.tempo + feat.dynamic + feat.notation
+                 + feat.tempo + feat.dynamic + feat.notation + feat.tempo_primo
         # temp_x.append(feat.is_beat)
         test_x.append(temp_x)
         is_beat_list.append(feat.is_beat)
@@ -1983,7 +2030,7 @@ class EmbeddingKey():
 
 def dynamic_embedding(dynamic_word, embed_table, len_vec=4):
     dynamic_vector = [0] * len_vec
-    dynamic_vector[0] = 0.5
+    # dynamic_vector[0] = 0.5
     keywords = embed_table.keywords
 
 
@@ -2018,20 +2065,20 @@ def dynamic_embedding(dynamic_word, embed_table, len_vec=4):
 def define_dyanmic_embedding_table():
     embed_table = EmbeddingTable()
 
-    embed_table.append(EmbeddingKey('ppp', 0, 0.05))
-    embed_table.append(EmbeddingKey('pp', 0, 0.2))
-    embed_table.append(EmbeddingKey('piano', 0, 35))
-    embed_table.append(EmbeddingKey('p', 0, 0.35))
-    embed_table.append(EmbeddingKey('mp', 0, 0.45))
-    embed_table.append(EmbeddingKey('mf', 0, 0.55))
-    embed_table.append(EmbeddingKey('f', 0, 0.65))
-    embed_table.append(EmbeddingKey('forte', 0, 0.65))
-    embed_table.append(EmbeddingKey('ff', 0, 0.8))
-    embed_table.append(EmbeddingKey('fff', 0, 0.95))
+    embed_table.append(EmbeddingKey('ppp', 0, -0.9))
+    embed_table.append(EmbeddingKey('pp', 0, -0.7))
+    embed_table.append(EmbeddingKey('piano', 0, -0.4))
+    embed_table.append(EmbeddingKey('p', 0, -0.4))
+    embed_table.append(EmbeddingKey('mp', 0, -0.2))
+    embed_table.append(EmbeddingKey('mf', 0, 0.2))
+    embed_table.append(EmbeddingKey('f', 0, 0.4))
+    embed_table.append(EmbeddingKey('forte', 0, 0.4))
+    embed_table.append(EmbeddingKey('ff', 0, 0.7))
+    embed_table.append(EmbeddingKey('fff', 0, 0.9))
 
-    embed_table.append(EmbeddingKey('più p', 0, 0.3))
+    embed_table.append(EmbeddingKey('più p', 0, -0.5))
     # embed_table.append(EmbeddingKey('più piano', 0, 0.3))
-    embed_table.append(EmbeddingKey('più f', 0, 0.7))
+    embed_table.append(EmbeddingKey('più f', 0, 0.5))
     # embed_table.append(EmbeddingKey('più forte', 0, 0.7))
     embed_table.append(EmbeddingKey('più forte possibile', 0, 1))
 
@@ -2063,7 +2110,7 @@ def define_dyanmic_embedding_table():
     embed_table.append(EmbeddingKey('con forza', 3, 0.5))
     embed_table.append(EmbeddingKey('con fuoco', 3, 0.7))
     embed_table.append(EmbeddingKey('con più fuoco possibile', 3, 1))
-    embed_table.append(EmbeddingKey('sotto voce', 3, -5))
+    embed_table.append(EmbeddingKey('sotto voce', 3, -0.5))
     embed_table.append(EmbeddingKey('mezza voce', 3, -0.3))
     embed_table.append(EmbeddingKey('appassionato', 3, 0.5))
 
@@ -2075,16 +2122,16 @@ def define_tempo_embedding_table():
     # [abs tempo, abs_tempo_added, tempo increase or decrease, sudden change]
     embed_table = EmbeddingTable()
     embed_table.append(EmbeddingKey('Freely, with expression', 0, 0.2))
-    embed_table.append(EmbeddingKey('lento', 0, 0.15))
-    embed_table.append(EmbeddingKey('adagio', 0, 0.2))
-    embed_table.append(EmbeddingKey('andante', 0, 0.3))
-    embed_table.append(EmbeddingKey('andantino', 0, 0.4))
-    embed_table.append(EmbeddingKey('moderato', 0, 0.5))
-    embed_table.append(EmbeddingKey('allegretto', 0, 0.6))
-    embed_table.append(EmbeddingKey('allegro', 0, 0.7))
-    embed_table.append(EmbeddingKey('vivace', 0, 0.8))
-    embed_table.append(EmbeddingKey('presto', 0, 0.9))
-    embed_table.append(EmbeddingKey('prestissimo', 0, 1))
+    embed_table.append(EmbeddingKey('lento', 0, -0.9))
+    embed_table.append(EmbeddingKey('adagio', 0, -0.7))
+    embed_table.append(EmbeddingKey('andante', 0, -0.5))
+    embed_table.append(EmbeddingKey('andantino', 0, -0.3))
+    embed_table.append(EmbeddingKey('moderato', 0, 0))
+    embed_table.append(EmbeddingKey('allegretto', 0, 0.3))
+    embed_table.append(EmbeddingKey('allegro', 0, 0.5))
+    embed_table.append(EmbeddingKey('vivace', 0, 0.6))
+    embed_table.append(EmbeddingKey('presto', 0, 0.8))
+    embed_table.append(EmbeddingKey('prestissimo', 0, 9))
 
     embed_table.append(EmbeddingKey('molto allegro', 0, 0.85))
 
@@ -2093,14 +2140,14 @@ def define_tempo_embedding_table():
     embed_table.append(EmbeddingKey('ritenuto', 1, -0.5))
     embed_table.append(EmbeddingKey('animato', 1, 0.5))
     embed_table.append(EmbeddingKey('più animato', 1, 0.6))
-    embed_table.append(EmbeddingKey('agitato', 1, 0.7))
+    embed_table.append(EmbeddingKey('agitato', 1, 0.4))
     embed_table.append(EmbeddingKey('più mosso', 1, 0.8))
-    embed_table.append(EmbeddingKey('stretto', 1, 0.8))
-    embed_table.append(EmbeddingKey('appassionato', 1, 0.5))
+    embed_table.append(EmbeddingKey('stretto', 1, 0.5))
+    embed_table.append(EmbeddingKey('appassionato', 1, 0.2))
 
 
     embed_table.append(EmbeddingKey('poco ritenuto', 1, -0.3))
-    embed_table.append(EmbeddingKey('molto agitato', 1, 0.9))
+    embed_table.append(EmbeddingKey('molto agitato', 1, 0.7))
 
 
 
