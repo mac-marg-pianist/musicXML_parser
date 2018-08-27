@@ -47,8 +47,8 @@ class Note(object):
         self.midi_program = self.state.midi_program
         self.velocity = self.state.velocity
 
-        if 'print-object' in self.xml_note.attrib.keys():
-            self.is_print_object = self.xml_note.attrib['print-object']
+        if 'print-object' in self.xml_note.attrib.keys() and self.xml_note.attrib['print-object'] == 'no':
+            self.is_print_object = False
 
         for child in self.xml_note:
             if child.tag == 'chord':

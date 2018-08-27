@@ -199,6 +199,7 @@ def extract_notes(xml_Doc, melody_only = False, grace_note = False):
     notes.sort(key=lambda x: (x.note_duration.xml_position, x.note_duration.grace_order, -x.pitch[1]))
     notes = check_overlapped_notes(notes)
     notes = apply_rest_to_note(notes, rests)
+    notes = omit_trill_notes(notes)
 
     notes = rearrange_chord_index(notes)
     # for note in notes:
@@ -407,7 +408,9 @@ def extract_score_features(xml_notes, measure_positions, beats=None, qpm_primo=0
         # feature.duration = note.note_duration.duration / measure_length
         feature.duration = note.note_duration.duration / note.state_fixed.divisions
         # feature.duration_ratio = calculate_duration_ratio(xml_notes, i)
-        feature.pitch_interval, feature.duration_ratio = cal_pitch_interval_and_duration_ratio(xml_notes, i)
+        pitch_interval, feature.duration_ratio = cal_pitch_interval_and_duration_ratio(xml_notes, i)
+        feature.pitch_interval = pitch_interval_into_vector(pitch_interval)
+
         feature.beat_position = (note_position - measure_positions[measure_index]) / measure_length
         feature.measure_length = measure_length / note.state_fixed.divisions
         feature.voice = note.voice
@@ -462,7 +465,6 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
     score_features = extract_score_features(xml_notes, measure_positions)
     feat_len = len(score_features)
 
-
     tempos = cal_tempo(xml_doc, pairs, score_features)
     # for tempo in tempos:
     #     print(tempo.qpm, tempo.time_position, tempo.end_time)
@@ -485,7 +487,6 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
                 previous_qpm = save_qpm
                 save_qpm = tempo.qpm
 
-
             feature.articulation = cal_articulation_with_tempo(pairs, i , tempo.qpm)
             feature.xml_deviation = cal_onset_deviation_with_tempo(pairs, i , tempo)
             # feature['IOI_ratio'], feature['articulation']  = calculate_IOI_articulation(pairs,i, total_length_tuple)
@@ -494,10 +495,10 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
             # feature['xml_deviation'] = cal_onset_deviation(xml_notes, melody_notes, melody_onset_positions, pairs, i)
             feature.pedal_at_start = pairs[i]['midi'].pedal_at_start
             feature.pedal_at_end = pairs[i]['midi'].pedal_at_end
-            feature.pedal_refresh = int(pairs[i]['midi'].pedal_refresh)
-            feature.pedal_refresh_time = int(pairs[i]['midi'].pedal_refresh_time)
-            feature.pedal_cut = int(pairs[i]['midi'].pedal_cut)
-            feature.pedal_cut_time = int(pairs[i]['midi'].pedal_cut)
+            feature.pedal_refresh = pairs[i]['midi'].pedal_refresh
+            feature.pedal_refresh_time = pairs[i]['midi'].pedal_refresh_time
+            feature.pedal_cut = pairs[i]['midi'].pedal_cut
+            feature.pedal_cut_time = pairs[i]['midi'].pedal_cut
             feature.soft_pedal = pairs[i]['midi'].soft_pedal
             feature.midi_start = pairs[i]['midi'].start # just for reproducing and testing perform features
             feature.previous_tempo = math.log(previous_qpm, 10)
@@ -626,7 +627,7 @@ def cal_pitch_interval_and_duration_ratio(xml_notes, index):
                         duration_ratio = 0
                     else:
                         duration_ratio = math.log(next_note.note_duration.duration / note.note_duration.duration, 10)
-                    return pitch_interval, duration_ratio,0
+                    return pitch_interval, duration_ratio
                 else:
                     candidate_notes.append(next_note)
         elif next_note.note_duration.xml_position > next_position:
@@ -644,17 +645,40 @@ def cal_pitch_interval_and_duration_ratio(xml_notes, index):
                     duration_ratio = 0
                 else:
                     duration_ratio = math.log(cand_note.note_duration.duration / note.note_duration.duration, 10)
-                return temp_interval, duration_ratio, 0
+                return temp_interval, duration_ratio
             else:
-                if next_note.voice == note.voice:
-                    rest_duration = (next_note.note_duration.xml_position - next_position) / note.state_fixed.divisions
-                    return 0, 0, rest_duration
-                else:
-                    search_index += 1
+                # if next_note.voice == note.voice:
+                #     rest_duration = (next_note.note_duration.xml_position - next_position) / note.state_fixed.divisions
+                #     return 0, 0
+                # else:
+                break
 
         search_index += 1
 
-    return 0, 0, 0
+    return None, 0
+
+def pitch_interval_into_vector(pitch_interval):
+    vec_itv= [0, 0, 1] # [direction, octave, whether the next note exists]
+    if pitch_interval == None:
+        return [0] * 15
+    elif pitch_interval > 0:
+        vec_itv[0] = 1
+    elif pitch_interval < 0:
+        vec_itv[0] = -1
+    else:
+        vec_itv[0] = 0
+
+
+    vec_itv[1] = abs(pitch_interval) // 12
+    semiton_vec = [0] * 12
+    semiton= abs(pitch_interval) % 12
+    semiton_vec[semiton] = 1
+
+    vec_itv += semiton_vec
+
+    return vec_itv
+
+
 
 def calculate_pitch_interval(xml_notes, index):
     search_index = 1
@@ -1914,8 +1938,6 @@ def cal_tempo(xml_doc, pairs, features):
     previous_end =0
     for i in range(num_beats-1):
         beat = beats[i]
-        # if beat == 12852:
-        #     print(previous_end)
         current_pos_pair = get_item_by_xml_position(position_pairs, beat)
         if current_pos_pair.xml_position < previous_end:
             # current_pos_pair = get_next_item(position_pairs, current_pos_pair)
@@ -1934,10 +1956,13 @@ def cal_tempo(xml_doc, pairs, features):
             continue
 
         cur_xml = current_pos_pair.xml_position
-        cur_time = current_pos_pair.time_position
+        # cur_time = current_pos_pair.time_position
+        cur_time = get_average_of_onset_time(pairs, current_pos_pair.index)
         cur_divisions = current_pos_pair.divisions
         next_xml = next_pos_pair.xml_position
-        next_time = next_pos_pair.time_position
+        # next_time = next_pos_pair.time_position
+        next_time = get_average_of_onset_time(pairs, next_pos_pair.index)
+
 
         qpm = (next_xml - cur_xml) / (next_time - cur_time) / cur_divisions * 60
 
@@ -2008,6 +2033,28 @@ def cal_tempo(xml_doc, pairs, features):
     #     print(tempo.xml_position,  tempo.end_xml, tempo.qpm, tempo.time_position, tempo.end_time)
 
     return tempos
+
+
+def get_average_of_onset_time(pairs, index):
+    current_note = pairs[index]['xml']
+    current_position = current_note.note_duration.xml_position
+    standard_time = pairs[index]['midi'].start
+    cur_time =  pairs[index]['midi'].start
+    added_num = 1
+
+    for i in range(1,index):
+        if not pairs[index-i] == []:
+            prev_note = pairs[index-i]['xml']
+            prev_midi = pairs[index-i]['midi']
+            if prev_note.note_duration.xml_position == current_position:
+                if abs(standard_time - prev_midi.start) <0.5:
+                    cur_time += prev_midi.start
+                    added_num += 1
+            else:
+                break
+
+    return cur_time / added_num
+
 
 def get_next_item(alist, item):
     if item in alist:
@@ -2208,7 +2255,16 @@ def define_tempo_embedding_table():
     return embed_table
 
 
-['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
-                     'presto', 'prestissimo', 'animato', 'maestoso', 'pesante', 'veloce', 'tempo i', 'lullaby', 'agitato',
-                     ['acc', 'accel', 'accelerando'],['rit', 'ritardando', 'rall', 'rallentando'], 'ritenuto',
-                    'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando'  ]
+def omit_trill_notes(xml_notes):
+    num_notes = len(xml_notes)
+    omit_index = []
+    for i in range(num_notes):
+        note = xml_notes[i]
+        if not note.is_print_object:
+            omit_index.append(i)
+
+    for index in reversed(omit_index):
+        note = xml_notes[index]
+        xml_notes.remove(note)
+
+    return xml_notes
