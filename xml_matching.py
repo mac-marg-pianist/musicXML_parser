@@ -451,7 +451,7 @@ def extract_score_features(xml_notes, measure_positions, beats=None, qpm_primo=0
     return features
 
 
-def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
+def extract_perform_features(xml_doc, xml_notes, pairs, perf_midi, measure_positions):
     print(len(xml_notes), len(pairs))
     velocity_mean = calculate_mean_velocity(pairs)
     total_length_tuple = calculate_total_length(pairs)
@@ -462,6 +462,7 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
     if not len(melody_notes) == len(melody_onset_positions):
         print('length of melody notes and onset positions are different')
 
+    accidentals_in_words = extract_accidental(xml_doc)
     score_features = extract_score_features(xml_notes, measure_positions)
     feat_len = len(score_features)
 
@@ -474,6 +475,9 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
 
     for i in range(feat_len):
         feature= score_features[i]
+        if xml_notes[i].note_notations.is_trill:
+            find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, accidentals_in_words, i)
+
         if not pairs[i] == []:
             tempo = find_corresp_tempo(pairs, i, tempos)
             if tempo.qpm > 0:
@@ -511,6 +515,7 @@ def extract_perform_features(xml_doc, xml_notes, pairs, measure_positions):
             previous_second = pairs[i]['midi'].start
             # if not feature['melody'] and not feature['IOI_ratio'] == None :
             #     feature['IOI_ratio'] = 0
+
 
         # feature['articulation']
 
@@ -916,7 +921,7 @@ def load_pairs_from_folder(path):
             print("performance name is " + perf_name)
             check_pairs(perform_pairs)
 
-            perform_features = extract_perform_features(XMLDocument, xml_notes, perform_pairs, measure_positions)
+            perform_features = extract_perform_features(XMLDocument, xml_notes, perform_pairs, perf_midi_notes, measure_positions)
             perform_features_piece.append(perform_features)
 
     return perform_features_piece
@@ -2268,3 +2273,158 @@ def omit_trill_notes(xml_notes):
         xml_notes.remove(note)
 
     return xml_notes
+
+def find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, accidentals, index):
+    #start of trill, end of trill
+    key_signatures = xml_doc.get_key_signatures()
+    note = xml_notes[index]
+    key = get_item_by_xml_position(key_signatures, note)
+    key = key.key
+
+    for acc in accidentals:
+        if acc.xml_position == note.note_duration.xml_position:
+            if acc.type['content'] == '#':
+                key = 7
+            elif acc.type['content'] == '♭':
+                key = -7
+            elif acc.type['content'] == '♮':
+                key = 0
+
+    trill_pitch = note.pitch[1]
+    up_pitch = cal_up_trill_pitch(note.pitch, key)
+
+
+    num_note = len(xml_notes)
+    prev_search = 1
+    prev_idx = index
+    next_idx = index
+    while index - prev_search >= 0:
+        prev_idx = index - prev_search
+        prev_note = xml_notes[prev_idx]
+        if prev_note.voice == note.voice: #and not pairs[prev_idx] == []:
+            break
+        else:
+            prev_search += 1
+
+    next_search = 1
+    while index + next_search < num_note:
+        next_idx = index + next_search
+        next_note = xml_notes[next_idx]
+        if next_note.voice == note.voice:
+            break
+        else:
+            next_search += 1
+
+    skipped_pitches_start = []
+    skipped_pitches_end = []
+    while pairs[prev_idx] == [] and prev_idx >0:
+        skipped_note = xml_notes[prev_idx]
+        skipped_pitches_start.append(skipped_note.pitch[1])
+        prev_idx -= 1
+    while pairs[next_idx] == [] and next_idx < num_note -1:
+        skipped_note = xml_notes[next_idx]
+        skipped_pitches_end.append(skipped_note.pitch[1])
+        next_idx += 1
+
+    prev_midi_note = pairs[prev_idx]['midi']
+    next_midi_note = pairs[next_idx]['midi']
+
+    search_range_start = perf_midi.index(prev_midi_note)
+    search_range_end = perf_midi.index(next_midi_note)
+    trills = []
+    prev_pitch = None
+    for i in range(search_range_start+1, search_range_end):
+        midi_note = perf_midi[i]
+        cur_pitch = midi_note.pitch
+        if cur_pitch == trill_pitch or cur_pitch == up_pitch:
+            if cur_pitch == prev_pitch:
+                next_midi_note = midi_note
+                break
+            else:
+                trills.append(midi_note)
+                prev_pitch = cur_pitch
+        elif cur_pitch in skipped_pitches_end:
+            next_midi_note = midi_note
+            break
+        elif 0 < midi_note.pitch - trill_pitch < 4:
+            print('check up_pitch', midi_note.pitch, trill_pitch, up_pitch)
+
+    while len(skipped_pitches_start) > 0:
+        skipped_pitch = skipped_pitches_start[0]
+        if trills[0].pitch == skipped_pitch:
+            dup_note = trills[0]
+            trills.remove(dup_note)
+        skipped_pitches_start.remove(skipped_pitch)
+
+    while len(skipped_pitches_end) > 0:
+        skipped_pitch = skipped_pitches_end[0]
+        if trills[-1].pitch == skipped_pitch:
+            dup_note = trills[-1]
+            trills.remove(dup_note)
+        skipped_pitches_end.remove(skipped_pitch)
+
+    trills_vec = [0] * 5 # num_trills, up_trill, first_note_ratio, last_note_ratio, accel_parameter
+    num_trills = len(trills)
+    if trills[0].pitch == up_pitch:
+        up_trill = True
+    else:
+        up_trill = False
+
+    ioi_seconds = []
+    prev_start = trills[0].start
+    next_note_start = next_midi_note.start
+    trill_length = next_note_start - prev_start
+    for i in range(1, num_trills):
+        ioi = trills[i].start - prev_start
+        ioi_seconds.append(ioi)
+        prev_start = trills[i].start
+    ioi_seconds.append(next_note_start - trills[-1].start)
+    print(ioi_seconds)
+
+    trills_vec[0] = num_trills
+    trills_vec[1] = int(up_trill)
+    trills_vec[2] = ioi_seconds[0] / trill_length
+    trills_vec[3] = ioi_seconds[-1] / trill_length
+
+    print(trills_vec)
+
+    if pairs[index] == []:
+        for pair in pairs:
+            if not pair ==[] and pair['midi'] == trills[0]:
+                pair = []
+        pairs[index]['xml'] = note
+        pairs[index]['midi'] = trills[0]
+
+    return trills
+
+def cal_up_trill_pitch(pitch_tuple, key):
+    pitches = ['c', 'd', 'e', 'f', 'g', 'a', 'b']
+    corresp_midi_pitch = [0, 2, 4, 5, 7, 9, 11]
+    pitch_name = pitch_tuple[0][0:1].lower()
+    octave = int(pitch_tuple[0][-1])
+    next_pitch_name = pitches[(pitches.index(pitch_name)+1)%7]
+    if next_pitch_name == 'c':
+        octave += 1
+
+    accidentals = ['f', 'c', 'g', 'd', 'a', 'e', 'b']
+    if key > 0 and next_pitch_name in accidentals[:key]:
+        acc = +1
+    elif key < 0 and next_pitch_name in accidentals[key:]:
+        acc = -1
+    else:
+        acc= 0
+
+    up_pitch = 12 * (octave + 1) + corresp_midi_pitch[pitches.index(next_pitch_name)] + acc
+
+    return up_pitch
+
+def extract_accidental(xml_doc):
+    directions = []
+    accs = ['#', '♭','♮']
+    # accs = ' # ♭ ♮ '
+    for part in xml_doc.parts:
+        for measure in part.measures:
+            for direction in measure.directions:
+                if direction.type['type'] == 'words' and direction.type['content'] in accs:
+                    directions.append(direction)
+    return directions
