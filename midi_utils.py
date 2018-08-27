@@ -114,11 +114,11 @@ def cal_pedal_refresh_in_note(note, notes, pedals, pedals_positions, pd_ind1, pd
     # if note.pedal_at_start == False:
     #     return False, 0
 
-    if note_index < len(notes) - 1:
-        next_note = notes[note_index+1]
-        if next_note.start < note.end:
-            pd_ind2 = binaryIndex(pedals_positions, next_note.start)
-            search_time_end = next_note.start
+    # if note_index < len(notes) - 1:
+    #     next_note = notes[note_index+1]
+    #     if next_note.start < note.end:
+    #         pd_ind2 = binaryIndex(pedals_positions, next_note.start)
+    #         search_time_end = next_note.start
 
     # check only the pedal between note start and end
     for i in range(pd_ind1, pd_ind2):
