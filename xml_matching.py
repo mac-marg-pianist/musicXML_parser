@@ -184,19 +184,21 @@ def extract_notes(xml_Doc, melody_only = False, grace_note = False):
     parts = xml_Doc.parts[0]
     notes =[]
     previous_grace_notes = []
+    rests = []
     for measure in parts.measures:
         for note in measure.notes:
             if melody_only:
                 if note.voice==1:
-                    notes, previous_grace_notes= check_notes_and_append(note, notes, previous_grace_notes, grace_note)
+                    notes, previous_grace_notes, rests= check_notes_and_append(note, notes, previous_grace_notes, rests, grace_note)
             else:
-                notes, previous_grace_notes = check_notes_and_append(note, notes, previous_grace_notes, grace_note)
+                notes, previous_grace_notes, rests = check_notes_and_append(note, notes, previous_grace_notes, rests, grace_note)
     notes = apply_after_grace_note_to_chord_notes(notes)
     if melody_only:
         notes = delete_chord_notes_for_melody(notes)
     notes = apply_tied_notes(notes)
     notes.sort(key=lambda x: (x.note_duration.xml_position, x.note_duration.grace_order, -x.pitch[1]))
     notes = check_overlapped_notes(notes)
+    notes = apply_rest_to_note(notes, rests)
 
     notes = rearrange_chord_index(notes)
     # for note in notes:
@@ -204,10 +206,10 @@ def extract_notes(xml_Doc, melody_only = False, grace_note = False):
 
     return notes
 
-def check_notes_and_append(note, notes, previous_grace_notes, inc_grace_note):
+def check_notes_and_append(note, notes, previous_grace_notes, rests, include_grace_note):
     if note.note_duration.is_grace_note:
         previous_grace_notes.append(note)
-        if inc_grace_note:
+        if include_grace_note:
             notes.append(note)
     elif not note.is_rest:
         if len(previous_grace_notes) > 0:
@@ -219,7 +221,7 @@ def check_notes_and_append(note, notes, previous_grace_notes, inc_grace_note):
                 if grc.voice == note.voice:
                     note.note_duration.after_grace_note = True
                     grc.note_duration.grace_order = grace_order
-                    grc.followed_note = note
+                    grc.following_note = note
                     grace_order += -1
                     added_grc.append(grc)
                     # notes.append(grc)
@@ -232,8 +234,45 @@ def check_notes_and_append(note, notes, previous_grace_notes, inc_grace_note):
 
             previous_grace_notes = rest_grc
         notes.append(note)
+    else:
+        assert note.is_rest
+        if note.is_print_object:
+            rests.append(note)
 
-    return notes, previous_grace_notes
+    return notes, previous_grace_notes, rests
+
+
+def apply_rest_to_note(xml_notes, rests):
+    xml_positions = [note.note_duration.xml_position for note in xml_notes]
+    # concat continuous rests
+    previous_rest = rests[0]
+    new_rests = []
+    for rest in rests:
+        previous_end = previous_rest.note_duration.xml_position + previous_rest.note_duration.duration
+        if previous_rest.voice == rest.voice and\
+                previous_end == rest.note_duration.xml_position:
+            previous_rest.note_duration.duration += rest.note_duration.duration
+        else:
+            new_rests.append(rest)
+            previous_rest = rest
+
+    rests = new_rests
+
+    for rest in rests:
+        rest_position = rest.note_duration.xml_position
+        closest_note_index = binaryIndex(xml_positions, rest_position)
+        search_index = 1
+        while closest_note_index - search_index >= 0:
+            prev_note = xml_notes[closest_note_index - search_index]
+            prev_note_end = prev_note.note_duration.xml_position + prev_note.note_duration.duration
+            if prev_note_end == rest_position and prev_note.voice == rest.voice:
+                prev_note.following_rest_duration = rest.note_duration.duration
+                break
+            search_index += 1
+
+    return xml_notes
+
+
 
 def apply_after_grace_note_to_chord_notes(notes):
     for note in notes:
@@ -244,6 +283,8 @@ def apply_after_grace_note_to_chord_notes(notes):
             for chd in chords:
                 chd.note_duration.after_grace_note = True
     return notes
+
+
 
 def extract_measure_position(xml_Doc):
     parts = xml_Doc.parts[0]
@@ -366,7 +407,7 @@ def extract_score_features(xml_notes, measure_positions, beats=None, qpm_primo=0
         # feature.duration = note.note_duration.duration / measure_length
         feature.duration = note.note_duration.duration / note.state_fixed.divisions
         # feature.duration_ratio = calculate_duration_ratio(xml_notes, i)
-        feature.pitch_interval, feature.duration_ratio, feature.following_rest = cal_pitch_interval_and_duration_ratio(xml_notes, i)
+        feature.pitch_interval, feature.duration_ratio = cal_pitch_interval_and_duration_ratio(xml_notes, i)
         feature.beat_position = (note_position - measure_positions[measure_index]) / measure_length
         feature.measure_length = measure_length / note.state_fixed.divisions
         feature.voice = note.voice
@@ -375,6 +416,8 @@ def extract_score_features(xml_notes, measure_positions, beats=None, qpm_primo=0
         feature.melody = int(note in melody_notes)
         feature.time_sig_num = 1/note.tempo.time_numerator
         feature.time_sig_den = 1/note.tempo.time_denominator
+        feature.following_rest = note.following_rest_duration / note.state_fixed.divisions
+
 
         dynamic_words = direction_words_flatten(note.dynamic)
         tempo_words = direction_words_flatten(note.tempo)
@@ -718,7 +761,7 @@ def cal_onset_deviation(xml_notes, melody_notes, melody_notes_onset_positions, p
     # onset_in_tempo = previous_time_position +  (note_onset_position - previous_xml_position) / (next_xml_position - previous_xml_position) * (next_time_position - previous_time_position)
     position_difference = onset_xml_position_in_tempo - note_onset_position
     if note.note_duration.is_grace_note:
-        deviation = position_difference / note.followed_note.note_duration.duration
+        deviation = position_difference / note.following_note.note_duration.duration
     else:
         deviation = position_difference / note.note_duration.duration
     if math.isinf(deviation) or math.isnan(deviation):
@@ -996,7 +1039,7 @@ def apply_perform_features(xml_notes, features):
             if not features[betw_index]['xml_deviation'] == None:
                 dur = betw_note.note_duration.duration
                 if betw_note.note_duration.is_grace_note:
-                    dur = betw_note.followed_note.note_duration.duration
+                    dur = betw_note.following_note.note_duration.duration
                 betw_note.note_duration.xml_position += features[betw_index]['xml_deviation'] * dur
 
             passed_duration = betw_note.note_duration.xml_position - note.note_duration.xml_position
@@ -1008,7 +1051,7 @@ def apply_perform_features(xml_notes, features):
         for j in range(num_between_notes):
             betw_note = between_notes[i][j]
             if betw_note.note_duration.is_grace_note:
-                betw_note.note_duration.seconds = (betw_note.followed_note.note_duration.time_position
+                betw_note.note_duration.seconds = (betw_note.following_note.note_duration.time_position
                                                    - betw_note.note_duration.time_position)\
                                                   * betw_note.note_duration.grace_order
         if not i == num_melody_notes-1:
@@ -1165,8 +1208,8 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
         feat = features[i]
 
         if note.note_duration.is_grace_note:
-            followed_note = note.followed_note
-            next_second = followed_note.note_duration.time_position
+            following_note = note.following_note
+            next_second = following_note.note_duration.time_position
             note.note_duration.seconds = (next_second - note.note_duration.time_position) / note.note_duration.num_grace
 
     return xml_notes
@@ -2114,7 +2157,6 @@ def define_dyanmic_embedding_table():
     embed_table.append(EmbeddingKey('mezza voce', 3, -0.3))
     embed_table.append(EmbeddingKey('appassionato', 3, 0.5))
 
-
     return embed_table
 
 
@@ -2145,11 +2187,8 @@ def define_tempo_embedding_table():
     embed_table.append(EmbeddingKey('stretto', 1, 0.5))
     embed_table.append(EmbeddingKey('appassionato', 1, 0.2))
 
-
     embed_table.append(EmbeddingKey('poco ritenuto', 1, -0.3))
     embed_table.append(EmbeddingKey('molto agitato', 1, 0.7))
-
-
 
     embed_table.append(EmbeddingKey('allargando', 2, -0.2))
     embed_table.append(EmbeddingKey('ritardando', 2, -0.5))
