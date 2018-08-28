@@ -2051,7 +2051,8 @@ def get_average_of_onset_time(pairs, index):
         if not pairs[index-i] == []:
             prev_note = pairs[index-i]['xml']
             prev_midi = pairs[index-i]['midi']
-            if prev_note.note_duration.xml_position == current_position:
+            if prev_note.note_duration.xml_position == current_position \
+                    and not prev_note.note_duration.is_grace_note and not prev_note.note_duration.after_grace_note:
                 if abs(standard_time - prev_midi.start) <0.5:
                     cur_time += prev_midi.start
                     added_num += 1
@@ -2392,8 +2393,7 @@ def find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, acc
         for pair in pairs:
             if not pair ==[] and pair['midi'] == trills[0]:
                 pair = []
-        pairs[index]['xml'] = note
-        pairs[index]['midi'] = trills[0]
+         pairs[index] = {'xml': note, 'midi': trills[0]}
 
     return trills
 
