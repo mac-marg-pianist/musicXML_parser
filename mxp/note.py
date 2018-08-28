@@ -37,6 +37,7 @@ class Note(object):
         self.following_note = None # for grace note
         self.is_print_object = True
         self.following_rest_duration = 0
+        self.measure_number = 0
 
         self._parse()
 
