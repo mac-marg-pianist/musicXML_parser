@@ -34,8 +34,10 @@ class Note(object):
         self.staff = 1
         self.chord_index = 0
         self.pedal = NotePedal()
-        self.followed_note = None # for grace note
-        self.on_beat = False
+        self.following_note = None # for grace note
+        self.is_print_object = True
+        self.following_rest_duration = 0
+        self.measure_number = 0
 
         self._parse()
 
@@ -45,6 +47,9 @@ class Note(object):
         self.midi_channel = self.state.midi_channel
         self.midi_program = self.state.midi_program
         self.velocity = self.state.velocity
+
+        if 'print-object' in self.xml_note.attrib.keys() and self.xml_note.attrib['print-object'] == 'no':
+            self.is_print_object = False
 
         for child in self.xml_note:
             if child.tag == 'chord':

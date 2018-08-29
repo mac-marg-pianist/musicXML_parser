@@ -10,7 +10,7 @@ import pickle
 # folderDir = 'chopin/Chopin_Polonaises/61/'
 folderDir = 'chopin_cleaned/Chopin_Ballade/1/'
 # folderDir = 'mxp/testdata/dummy/chopin_ballade3/'
-artistName = 'Dossin05'
+artistName = 'Day04'
 # artistName = 'CHEN03'
 xmlname = 'musicxml_cleaned.musicxml'
 # xmlname = 'xml.xml'
@@ -71,13 +71,13 @@ directions, time_signatures = xml_matching.extract_directions(XMLDocument)
 # for dir in directions:
 #     print(dir)
 melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions, time_signatures)
-# #
+#
 # for note in melody_notes:
 #     # print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo)
-#     # print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo.absolute, note.note_notations)
-#     print(vars(note.note_notations))
-#     if not note.dynamic.relative == []:
-#         for rel in note.dynamic.relative:
+#     print(note.pitch, note.note_duration.xml_position, note.dynamic.absolute, note.tempo.absolute) #, note.note_notations)
+#     # print(vars(note.note_notations))
+#     if not note.tempo.relative == []:
+#         for rel in note.tempo.relative:
 #             print(rel)
 #             print(rel.end_xml_position)
 
@@ -87,16 +87,16 @@ melody_notes = xml_matching.apply_directions_to_notes(melody_notes, directions, 
 #         # print(dir)
 #         pass
 
-# words = xml_matching.get_all_words_from_folders('chopin/')
-# for wrd in words:
-#     print (wrd)
+# words = xml_matching.get_all_words_from_folders('chopin_cleaned/')
+# # for wrd in words:
+# #     print (wrd)
 
 
 #
 measure_positions = xml_matching.extract_measure_position(XMLDocument)
-previous_pos=0
-for i in range(len(measure_positions)-1):
-    print('measure ' + str(i+1) + ' position is ' + str(measure_positions[i]) + ' and length is' + str(measure_positions[i+1]-measure_positions[i]))
+# previous_pos=0
+# for i in range(len(measure_positions)-1):
+#     print('measure ' + str(i+1) + ' position is ' + str(measure_positions[i]) + ' and length is' + str(measure_positions[i+1]-measure_positions[i]))
 features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perform_pairs, measure_positions)
 
 # melody = xml_matching.extract_melody_only_from_notes(melody_notes)

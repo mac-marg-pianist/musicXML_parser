@@ -34,6 +34,7 @@ class Notations(object):
     self.is_trill = False          
     self.is_tuplet = False
     self.is_strong_accent = False
+    self.wavy_line = None
 
   def parse_notations(self, xml_notations):
     """Parse the MusicXML <Notations> element."""
@@ -81,8 +82,23 @@ class Notations(object):
     Args:
       xml_ornaments: XML element with tag type 'ornaments'.
     """
-    tag = xml_ornaments.getchildren()[0].tag
-    if tag == 'trill-mark':
-      self.is_trill = True
-    if tag == 'inverted-mordent' or tag == 'mordent':
-      self.is_mordent = True
+    children = xml_ornaments.getchildren()
+    for child in children:
+      tag = child.tag
+      if tag == 'trill-mark':
+        self.is_trill = True
+      if tag == 'inverted-mordent' or tag == 'mordent':
+        self.is_mordent = True
+      if tag == 'wavy-line':
+        type = child.attrib['type']
+        number = child.attrib['number']
+        self.wavy_line = WavyLine(type,number)
+
+
+class WavyLine:
+  def __init__(self, type, number):
+    self.type = type #start or stop
+    self.number = number
+    self.xml_position = 0
+    self.end_xml_position = 0
+    self.pitch = 0
