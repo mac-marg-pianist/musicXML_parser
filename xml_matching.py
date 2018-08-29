@@ -171,7 +171,7 @@ def match_score_pair2perform(pairs, perform_midi, corresp_list):
     return match_list
 
 def match_xml_midi_perform(xml_notes, midi_notes, perform_notes, corresp):
-    xml_notes = apply_tied_notes(xml_notes)
+    # xml_notes = apply_tied_notes(xml_notes)
     match_list = matchXMLtoMIDI(xml_notes, midi_notes)
     score_pairs = make_xml_midi_pair(xml_notes, midi_notes, match_list)
     xml_perform_match = match_score_pair2perform(score_pairs, perform_notes, corresp)
@@ -323,20 +323,6 @@ def find(f, seq):
   return items_list
 
 
-def apply_grace(xml_Doc):
-    notes = extract_notes(xml_Doc)
-    for i in range(len(notes)):
-        note = notes[i]
-        if note.note_duration.is_grace_note:
-            find_normal_note(notes, i)
-
-    return xml_Doc
-
-
-def find_normal_note(notes, grace_index):
-    grace_note = notes[grace_index]
-    return notes
-
 
 class MusicFeature():
     def __init__(self):
@@ -405,9 +391,7 @@ def extract_score_features(xml_notes, measure_positions, beats=None, qpm_primo=0
             measure_length = measure_positions[measure_index] - measure_positions[measure_index-1]
             # measure_sec_length = measure_seocnds[measure_index] - measure_seocnds[measure_index-1]
 
-
-
-        feature.pitch = note.pitch[1]
+        feature.pitch = pitch_into_vector(note.pitch[1])
         # feature.pitch_interval = calculate_pitch_interval(xml_notes, i)
         # feature.duration = note.note_duration.duration / measure_length
         feature.duration = note.note_duration.duration / note.state_fixed.divisions
@@ -470,7 +454,7 @@ def extract_perform_features(xml_doc, xml_notes, pairs, perf_midi, measure_posit
     score_features = extract_score_features(xml_notes, measure_positions)
     feat_len = len(score_features)
 
-    tempos = cal_tempo(xml_doc, pairs, score_features)
+    tempos = cal_tempo(xml_doc, xml_notes, pairs, score_features)
     # for tempo in tempos:
     #     print(tempo.qpm, tempo.time_position, tempo.end_time)
     previous_qpm = 1
@@ -689,6 +673,16 @@ def pitch_interval_into_vector(pitch_interval):
 
     return vec_itv
 
+def pitch_into_vector(pitch):
+    pitch_vec = [0] * 13 #octave + pitch class
+    octave = (pitch // 12) - 1
+    octave = (octave - 4) / 4 # normalization
+    pitch_class = pitch % 12
+
+    pitch_vec[0] = octave
+    pitch_vec[pitch_class+1] = 1
+
+    return pitch_vec
 
 
 def calculate_pitch_interval(xml_notes, index):
@@ -1244,10 +1238,12 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
             note, _ = apply_feat_to_a_note(note, feat, prev_vel)
             trill_vec = feat.trill_param
             num_trills = trill_vec[0]
-            up_trill = trill_vec[1]
+            last_velocity = trill_vec[1]
             first_note_ratio = trill_vec[2]
             last_note_ratio = trill_vec[3]
+            up_trill = trill_vec[4]
             total_second = end_position - note.note_duration.time_position
+            first_velocity = note.velocity
 
             key = get_item_by_xml_position(key_signatures, note)
             key = key.key
@@ -1296,6 +1292,8 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
                             new_note.note_duration.seconds = mean_second * last_note_ratio
                         else:
                             new_note.note_duration.seconds = normal_second
+                        new_note.velocity = copy.copy(note.velocity)
+                        new_note.velocity = first_velocity + (last_velocity - first_velocity) * (j / num_trills)
                         prev_end += new_note.note_duration.seconds
                         ornaments.append(new_note)
             elif num_trills == 2:
@@ -1318,6 +1316,8 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
                         new_note.note_duration = copy.copy(note.note_duration)
                         new_note.note_duration.time_position = prev_end
                         new_note.note_duration.seconds = mean_second * last_note_ratio
+                        new_note.velocity = copy.copy(note.velocity)
+                        new_note.velocity = last_velocity
                         prev_end += mean_second * last_note_ratio
                         ornaments.append(new_note)
             else:
@@ -2031,9 +2031,9 @@ class Tempo:
         return string
 
 
-def cal_tempo(xml_doc, pairs, features):
+def cal_tempo(xml_doc, xml_notes, pairs, features):
     beats = cal_beat_positions_of_piece(xml_doc)
-    xml_notes = extract_notes(xml_doc, melody_only=False, grace_note=True)
+    # xml_notes = extract_notes(xml_doc, melody_only=False, grace_note=True)
     xml_positions = [note.note_duration.xml_position for note in xml_notes]
     tempos = []
     num_notes = len(xml_notes)
@@ -2505,7 +2505,7 @@ def find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, acc
     #     skipped_pitches_end.remove(skipped_pitch)
 
 
-    trills_vec = [0] * 4 # num_trills, up_trill, first_note_ratio, last_note_ratio, accel_parameter
+    trills_vec = [0] * 5 # num_trills, last_note_velocity, first_note_ratio, last_note_ratio, up_trill
     num_trills = len(trills)
 
     if num_trills == 0:
@@ -2514,7 +2514,6 @@ def find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, acc
         del trills[-1]
         num_trills -= 1
 
-    print(trills)
     if trills[0].pitch == up_pitch:
         up_trill = True
     else:
@@ -2532,9 +2531,11 @@ def find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, acc
     ioi_seconds.append( (next_note_start - trills[-1].start) *  num_trills / trill_length )
 
     trills_vec[0] = num_trills
-    trills_vec[1] = int(up_trill)
+    trills_vec[1] = trills[-1].velocity
     trills_vec[2] = ioi_seconds[0]
     trills_vec[3] = ioi_seconds[-1]
+    trills_vec[4] = int(up_trill)
+
 
     if pairs[index] == []:
         for pair in pairs:
