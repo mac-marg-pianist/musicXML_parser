@@ -11,18 +11,18 @@ from __future__ import print_function
 from fractions import Fraction
 import xml.etree.ElementTree as ET
 import zipfile
-from mxp.exception import MusicXMLParseException, MultipleTimeSignatureException
+from .exception import MusicXMLParseException, MultipleTimeSignatureException
 
 # internal imports
 
 import six
-import mxp.constants
+from . import constants
 
-from mxp.measure import Measure
-from mxp.tempo import Tempo
-from mxp.key_signature import KeySignature
-from mxp.score_part import ScorePart
-from mxp.part import Part
+from .measure import Measure
+from .tempo import Tempo
+from .key_signature import KeySignature
+from .score_part import ScorePart
+from .part import Part
 
 DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
 DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)
@@ -99,7 +99,7 @@ class MusicXMLDocument(object):
     self.parts = []
     # ScoreParts indexed by id.
     self._score_parts = {}
-    self.midi_resolution = mxp.constants.STANDARD_PPQ
+    self.midi_resolution = constants.STANDARD_PPQ
     self._state = MusicXMLParserState()
     # Total time in seconds
     self.total_time_secs = 0

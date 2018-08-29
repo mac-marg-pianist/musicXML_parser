@@ -1,6 +1,6 @@
-from mxp.tempo import Tempo
-from mxp.chord_symbol import ChordSymbol
-from mxp.note import Note
+from .tempo import Tempo
+from .chord_symbol import ChordSymbol
+from .note import Note
 
 DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
 DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)

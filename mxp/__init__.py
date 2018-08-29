@@ -16,4 +16,4 @@
 
 """Imports objects from music modules into the top-level music namespace."""
 
-from mxp.main import MusicXMLDocument
+from .main import MusicXMLDocument

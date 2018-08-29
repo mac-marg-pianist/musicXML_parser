@@ -6,7 +6,7 @@ import csv
 import math
 import os
 import pretty_midi
-from mxp import MusicXMLDocument
+from .mxp import MusicXMLDocument
 # import sys
 # # sys.setdefaultencoding() does not exist, here!
 # reload(sys)  # Reload does the trick!
@@ -104,7 +104,7 @@ def matchXMLtoMIDI(xml_notes, midi_notes):
 
 
     for candidates in candidates_list:
-        if len(candidates) ==1:
+        if len(candidates) == 1:
             matched_index = candidates[0]['index']
             match_list.append(matched_index)
         elif len(candidates) > 1:

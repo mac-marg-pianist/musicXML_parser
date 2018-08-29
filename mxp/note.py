@@ -1,12 +1,12 @@
 from fractions import Fraction
 import xml.etree.ElementTree as ET
 import zipfile
-from mxp.exception import UnpitchedNoteException, PitchStepParseException
-from mxp.notations import Notations
-from mxp.note_duration import NoteDuration
-from mxp.note_dynamic import NoteDynamic
-from mxp.note_dynamic import NoteTempo
-from mxp.note_dynamic import NotePedal
+from .exception import UnpitchedNoteException, PitchStepParseException
+from .notations import Notations
+from .note_duration import NoteDuration
+from .note_dynamic import NoteDynamic
+from .note_dynamic import NoteTempo
+from .note_dynamic import NotePedal
 
 import copy
 

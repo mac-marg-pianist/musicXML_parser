@@ -1,5 +1,5 @@
-from mxp.measure import Measure
-from mxp.score_part import ScorePart
+from .measure import Measure
+from .score_part import ScorePart
 import xml.etree.ElementTree as ET
 
 class Part(object):

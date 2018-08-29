@@ -1,5 +1,5 @@
-import mxp.constants
-from mxp.exception  import ChordSymbolParseException
+from . import constants
+from .exception  import ChordSymbolParseException
 
 class ChordSymbol(object):
   """Internal representation of a MusicXML chord symbol <harmony> element.
@@ -165,8 +165,8 @@ class ChordSymbol(object):
         except ValueError:
           raise ChordSymbolParseException('Non-integer offset: ' +
                                           str(child.text))
-        midi_ticks = offset * mxp.constants.STANDARD_PPQ / self.state.divisions
-        seconds = (midi_ticks / mxp.constants.STANDARD_PPQ *
+        midi_ticks = offset * constants.STANDARD_PPQ / self.state.divisions
+        seconds = (midi_ticks / constants.STANDARD_PPQ *
                    self.state.seconds_per_quarter)
         self.time_position += seconds
         self.xml_position += offset

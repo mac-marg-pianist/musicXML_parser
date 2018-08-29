@@ -1,4 +1,4 @@
-from mxp.exception  import KeyParseException
+from .exception  import KeyParseException
 import copy
 
 class KeySignature(object):

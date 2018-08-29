@@ -1,4 +1,4 @@
-from mxp.exception import AlternatingTimeSignatureException, TimeSignatureParseException
+from .exception import AlternatingTimeSignatureException, TimeSignatureParseException
 import copy
 
 class TimeSignature(object):
