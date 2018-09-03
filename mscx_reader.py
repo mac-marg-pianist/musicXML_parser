@@ -1,5 +1,16 @@
+# -*- coding: cp949 -*-
+
+
 from xml.dom import minidom
 import codecs
+import argparse
+import os
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-path", "--filePath", type=str, default='./mscx_files/', help="file path")
+
+args = parser.parse_args()
 
 
 
@@ -28,15 +39,19 @@ def ommit_invisible_and_save(filepath):
     mscx_file = open(filepath, 'r')
     xmldoc = minidom.parse(mscx_file)
     mscx_file.close()
+    outname = filepath[:-5] + '_cleaned.mscx'
+
 
     target_tags = ['Dynamic', 'Tempo', 'Pedal']
+
 
     for tag in target_tags:
         xmldoc = delete_invisible_elements(xmldoc, tag)
 
-    with codecs.open("out_omittec.mscx", "w", "utf-8") as out:
+    with codecs.open(outname, "w", "utf-8") as out:
         xmldoc.writexml(out)
 
 
+path = args.filePath
 
-ommit_invisible_and_save('mxp/testdata/dummy/chopin_ballade_2.mscx')
+ommit_invisible_and_save(path)
