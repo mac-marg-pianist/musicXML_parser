@@ -8,9 +8,9 @@ import pickle
 
 # folderDir = 'mxp/testdata/chopin10-3/'
 # folderDir = 'chopin/Chopin_Polonaises/61/'
-folderDir = 'chopin_cleaned/Chopin_Ballade/1/'
+folderDir = 'chopin_cleaned/Chopin_Etude_op_10/8/'
 # folderDir = 'mxp/testdata/dummy/chopin_ballade3/'
-artistName = 'Day04'
+artistName = 'Kwok02'
 # artistName = 'CHEN03'
 xmlname = 'musicxml_cleaned.musicxml'
 # xmlname = 'xml.xml'
@@ -39,7 +39,8 @@ score_pairs, perform_pairs = xml_matching.match_xml_midi_perform(melody_notes,sc
 #     print(note.pedal_at_start, note.pedal_at_end, note.pedal_refresh, note.pedal_cut)
 
 # for note in melody_notes:
-#     print(note.note_duration.is_grace_note, note.note_duration.grace_order)
+#     print(note.note_duration.xml_position, note.pitch, note.voice, note.following_rest_duration)
+    # print(note.note_duration.is_grace_note, note.note_duration.grace_order)
 
 # Check xml notes
 #  for i in range(len(melody_notes)-1):
@@ -97,7 +98,7 @@ measure_positions = xml_matching.extract_measure_position(XMLDocument)
 # previous_pos=0
 # for i in range(len(measure_positions)-1):
 #     print('measure ' + str(i+1) + ' position is ' + str(measure_positions[i]) + ' and length is' + str(measure_positions[i+1]-measure_positions[i]))
-features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perform_pairs, measure_positions)
+features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perform_pairs, perform_midi_notes, measure_positions)
 
 # melody = xml_matching.extract_melody_only_from_notes(melody_notes)
 # for note in melody:
@@ -125,8 +126,10 @@ features = xml_matching.extract_perform_features(XMLDocument, melody_notes, perf
 
 # new_midi = xml_matching.applyIOI(melody_notes, score_midi_notes, features, feature_list)
 
-new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = perform_midi_notes[0].start)
+# new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = perform_midi_notes[0].start)
 # new_xml = xml_matching.apply_tempo_perform_features(XMLDocument, melody_notes, features, start_time = 0.518162)
+new_xml = xml_matching.apply_time_position_features(melody_notes, features, start_time = perform_midi_notes[0].start)
+
 new_midi = xml_matching.xml_notes_to_midi(new_xml)
 # #
 # # for note in new_midi:
