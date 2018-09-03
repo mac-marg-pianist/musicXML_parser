@@ -93,8 +93,8 @@ def add_pedal_inf_to_notes(midi_obj):
         # note.sostenuto_refresh = check_pedal_refresh_in_note(note, notes, sostenuto_pedals, sostenuto_pedals_positions,
         #                                                  sostenuto_index_at_start, sostenuto_index_at_end)
 
-        note.pedal_cut, note.pedal_cut_time =\
-            cal_pedal_cut(note, notes, sustain_pedals, sustain_pedals_positions)
+        note.pedal_cut, note.pedal_cut_time = \
+            cal_pedal_cut_after(note, notes, sustain_pedals, sustain_pedals_positions)
         # note.sostenuto_cut = check_pedal_cut(note, notes, sostenuto_pedals,
         #                                                                 sostenuto_pedals_positions)
 
@@ -132,6 +132,7 @@ def cal_pedal_refresh_in_note(note, notes, pedals, pedals_positions, pd_ind1, pd
     else:
         return lowest_pedal_value, 0
 
+
 def cal_pedal_cut(note, notes, pedals, pedals_positions, threshold=30):
     note_index = notes.index(note)
     lowest_pedal_value = note.pedal_at_start
@@ -149,7 +150,6 @@ def cal_pedal_cut(note, notes, pedals, pedals_positions, threshold=30):
 
     last_note = prev_notes[index]
 
-
     pd1 = binaryIndex(pedals_positions, last_note.end)
     pd2 = binaryIndex(pedals_positions, note.start)
     for i in range(pd1, pd2):
@@ -160,6 +160,38 @@ def cal_pedal_cut(note, notes, pedals, pedals_positions, threshold=30):
     notes.sort(key=lambda x:x.start)
     if lowest_pedal:
         time_ratio = (note.start - lowest_pedal.start) / (note.end - note.start)
+        return lowest_pedal_value, time_ratio
+    else:
+        return lowest_pedal_value, 0
+
+
+def cal_pedal_cut_after(note, notes, pedals, pedals_positions, threshold=30):
+    note_index = notes.index(note)
+    note_end = note.end
+    lowest_pedal_value = note.pedal_at_end
+    lowest_pedal = None
+    if note_index == 0:
+        return 0, 0
+    #check that there is no activated notes when the note starts
+    next_notes = notes[note_index+1:]
+    next_onset = float('Inf')
+    for nxt_nt in next_notes:
+        if nxt_nt.start > note_end:
+            next_onset = nxt_nt.start
+            break
+    # if last_note.end > note.start:
+    #     return False, 0
+    pd1 = binaryIndex(pedals_positions, note.start)
+    pd2 = binaryIndex(pedals_positions, next_onset)
+
+    for i in range(pd1, pd2):
+        pedal = pedals[i]
+        if pedal.value < lowest_pedal_value:
+            lowest_pedal_value = pedal.value
+            lowest_pedal = pedal
+    notes.sort(key=lambda x:x.start)
+    if lowest_pedal:
+        time_ratio = (lowest_pedal.start - note_end) / (note.end - note.start)
         return lowest_pedal_value, time_ratio
     else:
         return lowest_pedal_value, 0
@@ -374,8 +406,9 @@ def save_note_pedal_to_CC(midi_obj):
         instrument.control_changes.append(pedal3)
 
         # if note.pedal_cut:
-        cut_time = note.start - (note.end - note.start) * note.pedal_cut_time
-        pedal4 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_cut), time=cut_time-eps)
+        # cut_time = note.start - (note.end - note.start) * note.pedal_cut_time
+        cut_time = note.end + (note.end - note.start) * note.pedal_cut_time
+        pedal4 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_cut), time=cut_time+eps)
         instrument.control_changes.append(pedal4)
 
     last_note_end = notes[-1].end
