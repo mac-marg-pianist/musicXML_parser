@@ -1284,6 +1284,7 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
             trill_pitch = note.pitch
             up_pitch, up_pitch_string = cal_up_trill_pitch(note.pitch, key, final_key, measure_accidentals)
 
+
             if up_trill:
                 up = True
             else:
@@ -1345,8 +1346,6 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
                         ornaments.append(new_note)
             else:
                 note.note_duration.seconds = total_second
-
-
         else:
             note.note_duration.seconds = end_position - note.note_duration.time_position
 
@@ -2457,8 +2456,6 @@ def find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, acc
                 final_key = -7
             elif acc.type['content'] == '♮':
                 final_key = 0
-
-
     measure_accidentals = get_measure_accidentals(xml_notes, index)
     trill_pitch = note.pitch[1]
 
@@ -2650,7 +2647,6 @@ def combine_wavy_lines(wavy_lines):
                     break
             if not deleted:
                 wavy_lines.remove(wavy)
-
     return wavy_lines
 
 
@@ -2738,3 +2734,4 @@ def check_index_continuity(features):
 
         prev_beat = feat.beat_index
         prev_measure = feat.measure_index
+
