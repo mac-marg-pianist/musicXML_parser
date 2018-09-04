@@ -1,13 +1,3 @@
-midi_utils/
-chopin/
-chopin_cleaned/
-test_pieces/
-data_generation.py
-xml_matching.py
-virtuosoNetMain.py
-performanceWorm.py
-mscx_files/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
