@@ -83,7 +83,7 @@ class Measure(object):
       xml_barline: XML element with tag type 'barline'.
     """
     style = xml_barline.find('bar-style')
-    if not style == None:
+    if style:
       style = xml_barline.find('bar-style').text
     repeat = xml_barline.find('repeat')
 
