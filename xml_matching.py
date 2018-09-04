@@ -16,7 +16,7 @@ import copy
 
 
 absolute_tempos_keywords = ['adagio', 'lento', 'andante', 'andantino', 'moderato', 'allegretto', 'allegro', 'vivace',
-                            'presto', 'prestissimo', 'maestoso', 'lullaby', 'tempo i', 'Freely, with expression', 'agitato']
+                            'presto', 'prestissimo', 'maestoso', 'lullaby', 'tempo i', 'Freely, with expression', 'agitato', 'Assez vif']
 relative_tempos_keywords = ['animato', 'pesante', 'veloce',
                             'acc', 'accel', 'rit', 'ritardando', 'accelerando', 'rall', 'rallentando', 'ritenuto',
                             'a tempo', 'stretto', 'slentando', 'meno mosso', 'più mosso', 'allargando', 'smorzando', 'appassionato']
@@ -342,6 +342,8 @@ class MusicFeature():
         self.following_rest = 0
         self.tempo_primo = None
         self.qpm_primo = None
+        self.beat_index = 0
+        self.measure_index = 0
 
         self.dynamic  = None
         self.tempo = None
@@ -420,7 +422,7 @@ def extract_score_features(xml_notes, measure_positions, beats=None, qpm_primo=0
         feature.notation = note_notation_to_vector(note)
         feature.qpm_primo = math.log(qpm_primo,10)
         feature.tempo_primo = tempo_primo
-
+        feature.measure_index = note.measure_number-1
 
         # print(feature.dynamic + feature.tempo)
 
@@ -436,6 +438,11 @@ def extract_score_features(xml_notes, measure_positions, beats=None, qpm_primo=0
                 feat.is_beat = True
                 num += 1
 
+    for i in range(xml_length):
+        note = xml_notes[i]
+        beat = binaryIndex(beats, note.note_duration.xml_position)
+        features[i].beat_index = beat
+
     return features
 
 
@@ -449,9 +456,9 @@ def extract_perform_features(xml_doc, xml_notes, pairs, perf_midi, measure_posit
     melody_onset_positions.sort()
     if not len(melody_notes) == len(melody_onset_positions):
         print('length of melody notes and onset positions are different')
-
+    beats = cal_beat_positions_of_piece(xml_doc)
     accidentals_in_words = extract_accidental(xml_doc)
-    score_features = extract_score_features(xml_notes, measure_positions)
+    score_features = extract_score_features(xml_notes, measure_positions, beats=beats)
     feat_len = len(score_features)
 
     tempos = cal_tempo(xml_doc, xml_notes, pairs, score_features)
@@ -461,12 +468,23 @@ def extract_perform_features(xml_doc, xml_notes, pairs, perf_midi, measure_posit
     save_qpm = xml_notes[0].state_fixed.qpm
     previous_second = None
 
+    def cal_qpm_primo(tempos, view_range=20):
+        qpm_primo = 0
+        for i in range(view_range):
+            tempo = tempos[i]
+            qpm_primo += tempo.qpm
+
+        return qpm_primo / view_range
+
+    qpm_primo = cal_qpm_primo(tempos)
+    qpm_primo = math.log(qpm_primo, 10)
+
     for i in range(feat_len):
         feature= score_features[i]
         if xml_notes[i].note_notations.is_trill:
             feature.trill_param, trill_length = find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, accidentals_in_words, i)
         else:
-            feature.trill_param = [0] * 4
+            feature.trill_param = [0] * 5
             trill_length = None
         if not pairs[i] == []:
             tempo = find_corresp_tempo(pairs, i, tempos)
@@ -496,8 +514,9 @@ def extract_perform_features(xml_doc, xml_notes, pairs, perf_midi, measure_posit
             feature.soft_pedal = pairs[i]['midi'].soft_pedal
             feature.midi_start = pairs[i]['midi'].start # just for reproducing and testing perform features
             feature.previous_tempo = math.log(previous_qpm, 10)
+            feature.qpm_primo = qpm_primo
 
-            if previous_second == None:
+            if previous_second is None:
                 feature.passed_second = 0
             else:
                 feature.passed_second = pairs[i]['midi'].start - previous_second
@@ -508,6 +527,8 @@ def extract_perform_features(xml_doc, xml_notes, pairs, perf_midi, measure_posit
 
 
         # feature['articulation']
+    score_features = make_index_continuous(score_features, score=False)
+
 
     return score_features
 
@@ -898,6 +919,7 @@ def load_pairs_from_folder(path):
     xml_notes = extract_notes(XMLDocument, melody_only=False, grace_note=True)
     score_midi = midi_utils.to_midi_zero(score_midi_name)
     score_midi_notes = score_midi.instruments[0].notes
+    score_midi_notes.sort(key=lambda x:x.start)
     match_list = matchXMLtoMIDI(xml_notes, score_midi_notes)
     score_pairs = make_xml_midi_pair(xml_notes, score_midi_notes, match_list)
     check_pairs(score_pairs)
@@ -1238,7 +1260,7 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
             note, _ = apply_feat_to_a_note(note, feat, prev_vel)
             trill_vec = feat.trill_param
             num_trills = trill_vec[0]
-            last_velocity = trill_vec[1]
+            last_velocity = trill_vec[1] * note.velocity
             first_note_ratio = trill_vec[2]
             last_note_ratio = trill_vec[3]
             up_trill = trill_vec[4]
@@ -1261,7 +1283,7 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
             measure_accidentals = get_measure_accidentals(xml_notes, i)
             trill_pitch = note.pitch
             up_pitch, up_pitch_string = cal_up_trill_pitch(note.pitch, key, final_key, measure_accidentals)
-            mean_second = total_second / num_trills
+
 
             if up_trill:
                 up = True
@@ -1269,6 +1291,7 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
                 up = False
 
             if num_trills > 2:
+                mean_second = total_second / num_trills
                 normal_second = (total_second - mean_second * (first_note_ratio + last_note_ratio)) / (num_trills -2)
                 prev_end = note.note_duration.time_position
                 for j in range(num_trills):
@@ -1297,6 +1320,7 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
                         prev_end += new_note.note_duration.seconds
                         ornaments.append(new_note)
             elif num_trills == 2:
+                mean_second = total_second / num_trills
                 prev_end = note.note_duration.time_position
                 for j in range(2):
                     if up:
@@ -1321,9 +1345,7 @@ def apply_tempo_perform_features(xml_doc, xml_notes, features, start_time=0, pre
                         prev_end += mean_second * last_note_ratio
                         ornaments.append(new_note)
             else:
-                note.note_duration.seconds = mean_second
-
-
+                note.note_duration.seconds = total_second
         else:
             note.note_duration.seconds = end_position - note.note_duration.time_position
 
@@ -1532,7 +1554,7 @@ def save_midi_notes_as_piano_midi(midi_notes, output_name, bool_pedal=False, dis
     if bool_pedal:
         pedals = piano_midi.instruments[0].control_changes
         for pedal in pedals:
-            if pedal.value < 75:
+            if pedal.value < 30:
                 pedal.value = 0
 
     if disklavier:
@@ -1542,11 +1564,11 @@ def save_midi_notes_as_piano_midi(midi_notes, output_name, bool_pedal=False, dis
         for pedal in pedals:
             if pedal.time <0.3:
                 continue
-            if pedal.value < 75:
+            if pedal.value < 30:
                 previous_off_time = pedal.time
             else:
                 time_passed = pedal.time - previous_off_time
-                if time_passed < 0.3:
+                if time_passed < 0.15:
                     pedals.remove(pedal)
         piano_midi.instruments[0].control_changes = pedals
     piano_midi.write(output_name)
@@ -1616,15 +1638,21 @@ def apply_directions_to_notes(xml_notes, directions, time_signatures):
     absolute_tempos_position = [tmp.xml_position for tmp in absolute_tempos]
     time_signatures_position = [time.xml_position for time in time_signatures]
 
+    num_dynamics = len(absolute_dynamics)
+    num_tempos = len(absolute_tempos)
 
     for note in xml_notes:
         note_position = note.note_duration.xml_position
-        index = binaryIndex(absolute_dynamics_position, note_position)
-        note.dynamic.absolute = absolute_dynamics[index].type['content']
-        tempo_index = binaryIndex(absolute_tempos_position, note_position)
-        time_index = binaryIndex(time_signatures_position, note_position)
+
+        if num_dynamics > 0:
+            index = binaryIndex(absolute_dynamics_position, note_position)
+            note.dynamic.absolute = absolute_dynamics[index].type['content']
+
+        if num_tempos > 0:
+            tempo_index = binaryIndex(absolute_tempos_position, note_position)
         # note.tempo.absolute = absolute_tempos[tempo_index].type[absolute_tempos[tempo_index].type.keys()[0]]
-        note.tempo.absolute = absolute_tempos[tempo_index].type['content']
+            note.tempo.absolute = absolute_tempos[tempo_index].type['content']
+        time_index = binaryIndex(time_signatures_position, note_position)
         note.tempo.time_numerator = time_signatures[time_index].numerator
         note.tempo.time_denominator = time_signatures[time_index].denominator
 
@@ -1954,30 +1982,40 @@ def read_xml_to_array(path_name, means, stds, start_tempo):
 
     measure_positions = extract_measure_position(xml_object)
     features = extract_score_features(xml_notes, measure_positions, beats, start_tempo)
+    features = make_index_continuous(features, score=True)
 
     for i in range(len(stds[0])):
-        if stds[0][i] == 0:
+        if stds[0][i] < 1e-4 or isinstance(stds[0][i], complex):
             stds[0][i] = 1
 
     test_x = []
     is_beat_list = []
+    beat_numbers = []
+    measure_numbers = []
     for feat in features:
         # if not feat['pitch_interval'] == None:
-        temp_x = [ (feat.pitch-means[0][0])/stds[0][0],  (feat.pitch_interval-means[0][1])/stds[0][1] ,
-                        (feat.duration - means[0][2]) / stds[0][2],(feat.duration_ratio-means[0][3])/stds[0][3],
-                        (feat.beat_position-means[0][4])/stds[0][4], (feat.measure_length-means[0][5])/stds[0][5],
-                   (feat.voice - means[0][6]) / stds[0][6], (feat.qpm_primo - means[0][7]) / stds[0][7],
-                        feat.xml_position, feat.grace_order, feat.time_sig_num, feat.time_sig_den]\
-                 + feat.tempo + feat.dynamic + feat.notation + feat.tempo_primo
+        # temp_x = [ (feat.pitch-means[0][0])/stds[0][0],  (feat.pitch_interval-means[0][1])/stds[0][1] ,
+        #                 (feat.duration - means[0][2]) / stds[0][2],(feat.duration_ratio-means[0][3])/stds[0][3],
+        #                 (feat.beat_position-means[0][4])/stds[0][4], (feat.measure_length-means[0][5])/stds[0][5],
+        #            (feat.voice - means[0][6]) / stds[0][6], (feat.qpm_primo - means[0][7]) / stds[0][7],
+        #                 feat.xml_position, feat.grace_order, feat.time_sig_num, feat.time_sig_den]\
+        #          + feat.tempo + feat.dynamic + feat.notation + feat.tempo_primo
+        temp_x = [(feat.duration - means[0][0]) / stds[0][0],(feat.duration_ratio-means[0][1])/stds[0][1],
+                    (feat.beat_position-means[0][2])/stds[0][2], (feat.measure_length-means[0][3])/stds[0][3],
+                    (feat.voice - means[0][4]) / stds[0][4], (feat.qpm_primo - means[0][5]) / stds[0][5],
+                  (feat.following_rest - means[0][6]) / stds[0][6], feat.xml_position, feat.grace_order, feat.time_sig_num, feat.time_sig_den] \
+                    + feat.pitch + feat.pitch_interval + feat.tempo + feat.dynamic + feat.notation + feat.tempo_primo
         # temp_x.append(feat.is_beat)
         test_x.append(temp_x)
         is_beat_list.append(feat.is_beat)
+        beat_numbers.append(feat.beat_index)
+        measure_numbers.append(feat.measure_index)
         # else:
         #     test_x.append( [(feat['pitch']-means[0][0])/stds[0][0], 0,  (feat['duration'] - means[0][2]) / stds[0][2], 0,
         #                     (feat['beat_position']-means[0][4])/stds[0][4]]
         #                    + feat['tempo'] + feat['dynamic'] + feat['notation'] )
 
-    return test_x, xml_notes, xml_object, is_beat_list
+    return test_x, xml_notes, xml_object, beat_numbers, measure_numbers
 
 
 def cal_beat_positions_of_piece(xml_doc):
@@ -2327,7 +2365,9 @@ def define_tempo_embedding_table():
     embed_table.append(EmbeddingKey('allegro', 0, 0.5))
     embed_table.append(EmbeddingKey('vivace', 0, 0.6))
     embed_table.append(EmbeddingKey('presto', 0, 0.8))
-    embed_table.append(EmbeddingKey('prestissimo', 0, 9))
+    embed_table.append(EmbeddingKey('prestissimo', 0, 0.9))
+    embed_table.append(EmbeddingKey('Assez vif', 0, 0.6))
+
 
     embed_table.append(EmbeddingKey('molto allegro', 0, 0.85))
 
@@ -2379,7 +2419,6 @@ def omit_trill_notes(xml_notes):
             wavy_line.xml_position = note.note_duration.xml_position
             wavy_line.pitch = note.pitch
             wavy_lines.append(wavy_line)
-
     wavy_lines = combine_wavy_lines(wavy_lines)
 
     for index in reversed(omit_index):
@@ -2417,8 +2456,6 @@ def find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, acc
                 final_key = -7
             elif acc.type['content'] == '♮':
                 final_key = 0
-
-
     measure_accidentals = get_measure_accidentals(xml_notes, index)
     trill_pitch = note.pitch[1]
 
@@ -2531,7 +2568,7 @@ def find_corresp_trill_notes_from_midi(xml_doc, xml_notes, pairs, perf_midi, acc
     ioi_seconds.append( (next_note_start - trills[-1].start) *  num_trills / trill_length )
 
     trills_vec[0] = num_trills
-    trills_vec[1] = trills[-1].velocity
+    trills_vec[1] = trills[-1].velocity / trills[0].velocity
     trills_vec[2] = ioi_seconds[0]
     trills_vec[3] = ioi_seconds[-1]
     trills_vec[4] = int(up_trill)
@@ -2600,12 +2637,16 @@ def combine_wavy_lines(wavy_lines):
     for i in reversed(range(num_wavy)):
         wavy = wavy_lines[i]
         if wavy.type == 'stop':
+            deleted = False
             for j in range(1, i+1):
                 prev_wavy = wavy_lines[i - j]
                 if prev_wavy.type == 'start' and prev_wavy.number == wavy.number:
                     prev_wavy.end_xml_position = wavy.xml_position
                     wavy_lines.remove(wavy)
+                    deleted = True
                     break
+            if not deleted:
+                wavy_lines.remove(wavy)
     return wavy_lines
 
 
@@ -2655,3 +2696,42 @@ def get_measure_accidentals(xml_notes, index):
                     measure_accidentals.append(temp_pair)
 
     return measure_accidentals
+
+def make_index_continuous(features, score=False):
+    prev_beat = 0
+    prev_measure = 0
+
+    beat_compensate = 0
+    measure_compensate = 0
+
+    for feat in features:
+        if feat.qpm is not None or score:
+            if feat.beat_index - prev_beat > 1:
+                beat_compensate -= (feat.beat_index - prev_beat) -1
+            if feat.measure_index - prev_measure > 1:
+                measure_compensate -= (feat.measure_index - prev_measure) -1
+
+            prev_beat = feat.beat_index
+            prev_measure = feat.measure_index
+
+            feat.beat_index += beat_compensate
+            feat.measure_index += measure_compensate
+        else:
+            continue
+    return features
+
+
+def check_index_continuity(features):
+    prev_beat = 0
+    prev_measure = 0
+
+
+    for feat in features:
+        if feat.beat_index - prev_beat > 1:
+            print(feat.beat_index, prev_beat)
+        if feat.measure_index - prev_measure > 1:
+            print(feat.measure_index, prev_measure)
+
+        prev_beat = feat.beat_index
+        prev_measure = feat.measure_index
+

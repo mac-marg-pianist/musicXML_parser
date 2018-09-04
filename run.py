@@ -104,12 +104,12 @@ class Onset(OnsetState):
       for type in wedge_type:
         current_wedge_val = list(current_wedge[type].values())
         previous_wedge_val = list(previous_wedge[type].values())
-      # 이전에 continue이지만 값이 빠져있는 경우
+      #
       #   if previous_wedge_val[2] == 1 and current_wedge_val[2] == 0:
       #     current_wedge_val[0] = 1
       #     current_wedge_val[2] = 1
         
-      # # # 이전에 start 이지만 continue 값이 빠져있는 경우
+      # # #
       #   if previous_wedge_val[1] == 1 and current_wedge_val[2] == 0:
       #     current_wedge_val[0] = 1
       #     current_wedge_val[2] = 1
@@ -159,10 +159,10 @@ class Onset(OnsetState):
     self.staccato = vector
 
   def _set_pedal(self):
-    # 역시 같은 문제
+    #
     pass
 
-  def _change_bool_to_vector(self, property_name, bool_type: bool):
+  def _change_bool_to_vector(self, property_name, bool_type= bool):
     return (bool_type, [1]) if bool_type == True else (bool_type, [0])
 
 class Main(OnsetState):
