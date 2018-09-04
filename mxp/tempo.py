@@ -1,6 +1,7 @@
 from . import constants
 import copy
 
+
 class Tempo(object):
   """Internal representation of a MusicXML tempo."""
 
@@ -29,4 +30,3 @@ class Tempo(object):
     tempo_str = 'Tempo: ' + str(self.qpm)
     tempo_str += ' (@time: ' + str(self.time_position) + ')'
     return tempo_str
-

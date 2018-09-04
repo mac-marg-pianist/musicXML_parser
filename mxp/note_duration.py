@@ -3,6 +3,7 @@ from fractions import Fraction
 from . import constants
 from .exception import InvalidNoteDurationTypeException
 
+
 class NoteDuration(object):
   """Internal representation of a MusicXML note's duration properties."""
 
@@ -15,18 +16,18 @@ class NoteDuration(object):
                     '512th': Fraction(1, 512), '1024th': Fraction(1, 1024)}
 
   def __init__(self, state):
-    self.duration = 0                   # MusicXML duration
-    self.midi_ticks = 0                 # Duration in MIDI ticks
-    self.seconds = 0                    # Duration in seconds
-    self.time_position = 0              # Onset time in seconds
+    self.duration = 0  # MusicXML duration
+    self.midi_ticks = 0  # Duration in MIDI ticks
+    self.seconds = 0  # Duration in seconds
+    self.time_position = 0  # Onset time in seconds
     self.xml_position = 0
-    self.dots = 0                       # Number of augmentation dots
-    self._type = 'quarter'              # MusicXML duration type
+    self.dots = 0  # Number of augmentation dots
+    self._type = 'quarter'  # MusicXML duration type
     self.tuplet_ratio = Fraction(1, 1)  # Ratio for tuplets (default to 1)
-    self.is_grace_note = True           # Assume true until not found
+    self.is_grace_note = True  # Assume true until not found
     self.state = state
-    self.after_grace_note = False       # The note is preceded by a grace note(s)
-    self.grace_order = 0             # If there are multiple grace notes, record the order of notes (-1, -2)
+    self.after_grace_note = False  # The note is preceded by a grace note(s)
+    self.grace_order = 0  # If there are multiple grace notes, record the order of notes (-1, -2)
     self.num_grace = 0
 
   def parse_duration(self, is_in_chord, is_grace_note, duration):
@@ -51,7 +52,6 @@ class NoteDuration(object):
     # <duration> tag in the MusicXML
     self.is_grace_note = is_grace_note
 
-
     if is_in_chord:
       # If this is a chord, set the time position to the time position
       # of the previous note (i.e. all the notes in the chord will have
@@ -63,7 +63,6 @@ class NoteDuration(object):
       # Only increment time positions once in chord
       self.state.time_position += self.seconds
       self.state.xml_position += self.duration
-
 
   def _convert_type_to_ratio(self):
     """Convert the MusicXML note-type-value to a Python Fraction.
@@ -109,7 +108,7 @@ class NoteDuration(object):
 
     # If the note is a grace note, force its ratio to be 0
     # because it does not have a <duration> tag
-    if self.is_grace_note:  
+    if self.is_grace_note:
       duration_ratio = Fraction(0, 1)
     return duration_ratio
 
@@ -126,5 +125,5 @@ class NoteDuration(object):
   def type(self, new_type):
     if new_type not in self.TYPE_RATIO_MAP:
       raise InvalidNoteDurationTypeException(
-          'Note duration type "{}" is not valid'.format(new_type))
+        'Note duration type "{}" is not valid'.format(new_type))
     self._type = new_type

@@ -1,7 +1,7 @@
 import six
 
-DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
-DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)
+DEFAULT_MIDI_PROGRAM = 0  # Default MIDI Program (0 = grand piano)
+DEFAULT_MIDI_CHANNEL = 0  # Default MIDI Channel (0 = first channel)
 MUSICXML_MIME_TYPE = 'application/vnd.recordare.musicxml+xml'
 
 

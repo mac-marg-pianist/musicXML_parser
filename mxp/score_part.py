@@ -2,8 +2,9 @@ from .tempo import Tempo
 from .chord_symbol import ChordSymbol
 from .note import Note
 
-DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
-DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)
+DEFAULT_MIDI_PROGRAM = 0  # Default MIDI Program (0 = grand piano)
+DEFAULT_MIDI_CHANNEL = 0  # Default MIDI Channel (0 = first channel)
+
 
 class ScorePart(object):
   """"Internal representation of a MusicXML <score-part>.
@@ -47,5 +48,3 @@ class ScorePart(object):
     score_str += ', Channel: ' + str(self.midi_channel)
     score_str += ', Program: ' + str(self.midi_program)
     return score_str
-
-

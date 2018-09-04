@@ -2,6 +2,7 @@ from .measure import Measure
 from .score_part import ScorePart
 import xml.etree.ElementTree as ET
 
+
 class Part(object):
   """Internal represention of a MusicXML <part> element."""
 

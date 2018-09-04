@@ -9,6 +9,7 @@ from .exception import MultipleTimeSignatureException
 from .note import Note
 from .direction import Direction
 
+
 class Measure(object):
   """Internal represention of the MusicXML <measure> element."""
 
@@ -20,8 +21,8 @@ class Measure(object):
     self.tempos = []
     self.time_signature = None
     self.key_signature = None
-    self.barline = None            # 'double' or 'final' or None
-    self.repeat = None             # 'start' or 'stop' or None
+    self.barline = None  # 'double' or 'final' or None
+    self.repeat = None  # 'start' or 'stop' or None
     # Cumulative duration in MusicXML duration.
     # Used for time signature calculations
     self.duration = 0
@@ -38,7 +39,7 @@ class Measure(object):
   def _parse(self):
     """Parse the <measure> element."""
     # Create new direction
-    #direction = []
+    # direction = []
     if 'implicit' in self.xml_measure.attrib.keys():
       self.implicit = self.xml_measure.attrib['implicit']
     for child in self.xml_measure:
@@ -50,7 +51,7 @@ class Measure(object):
       elif child.tag == 'barline':
         self._parse_barline(child)
       elif child.tag == 'direction':
-       # Get tempo in <sound /> and update state tempo and time_position
+        # Get tempo in <sound /> and update state tempo and time_position
         self._parse_direction(child)
         direction = Direction(child, self.state)
         self.directions.append(direction)
@@ -63,7 +64,7 @@ class Measure(object):
         chord_symbol = ChordSymbol(child, self.state)
         self.chord_symbols.append(chord_symbol)
       elif child.tag == 'note':
-         
+
         note = Note(child, self.state)
         self.notes.append(note)
         # Keep track of current note as previous note for chord timings
@@ -97,7 +98,7 @@ class Measure(object):
         self.repeat = 'start'
       elif attrib == 'backword':
         self.repeat = 'end'
-    
+
   def _parse_attributes(self, xml_attributes):
     """Parse the MusicXML <attributes> element."""
 
@@ -202,8 +203,8 @@ class Measure(object):
       self.state.time_signature = self.time_signature
     else:
       fractional_state_time_signature = Fraction(
-          self.state.time_signature.numerator,
-          self.state.time_signature.denominator)
+        self.state.time_signature.numerator,
+        self.state.time_signature.denominator)
 
       # Check for pickup measure. Reset time signature to smaller numerator
       pickup_measure = False

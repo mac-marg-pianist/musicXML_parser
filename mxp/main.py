@@ -24,9 +24,10 @@ from .key_signature import KeySignature
 from .score_part import ScorePart
 from .part import Part
 
-DEFAULT_MIDI_PROGRAM = 0    # Default MIDI Program (0 = grand piano)
-DEFAULT_MIDI_CHANNEL = 0    # Default MIDI Channel (0 = first channel)
+DEFAULT_MIDI_PROGRAM = 0  # Default MIDI Program (0 = grand piano)
+DEFAULT_MIDI_CHANNEL = 0  # Default MIDI Channel (0 = first channel)
 MUSICXML_MIME_TYPE = 'application/vnd.recordare.musicxml+xml'
+
 
 class MusicXMLParserState(object):
   """Maintains internal state of the MusicXML parser."""
@@ -82,6 +83,7 @@ class MusicXMLParserState(object):
 
     # Keep track of chord index
     self.chord_index = 0
+
 
 class MusicXMLDocument(object):
   """Internal representation of a MusicXML Document.
@@ -168,20 +170,20 @@ class MusicXMLDocument(object):
                   compressed_file_name = rootfile_tag.attrib['full-path']
                 else:
                   raise MusicXMLParseException(
-                      'Multiple MusicXML files found in compressed archive')
+                    'Multiple MusicXML files found in compressed archive')
             else:
               # No media-type attribute, so assume this is the MusicXML file
               if not compressed_file_name:
                 compressed_file_name = rootfile_tag.attrib['full-path']
               else:
                 raise MusicXMLParseException(
-                    'Multiple MusicXML files found in compressed archive')
+                  'Multiple MusicXML files found in compressed archive')
         except ET.ParseError as exception:
           raise MusicXMLParseException(exception)
 
       if not compressed_file_name:
         raise MusicXMLParseException(
-            'Unable to locate main .xml file in compressed archive.')
+          'Unable to locate main .xml file in compressed archive.')
       if six.PY2:
         # In py2, the filenames in infolist are utf-8 encoded, so
         # we encode the compressed_file_name as well in order to
@@ -192,7 +194,7 @@ class MusicXMLDocument(object):
                                 if x.filename == compressed_file_name][0]
       except IndexError:
         raise MusicXMLParseException(
-            'Score file %s not found in zip archive' % compressed_file_name)
+          'Score file %s not found in zip archive' % compressed_file_name)
       score_string = mxlzip.read(compressed_file_info)
       try:
         score = ET.fromstring(score_string)
@@ -336,11 +338,12 @@ class MusicXMLDocument(object):
     tempos = self.get_tempos()
 
     tempos.sort(key=lambda x: x.xml_position)
-    new_time_position =0
+    new_time_position = 0
     for i in range(len(tempos)):
       tempos[i].time_position = new_time_position
-      if i +1 < len(tempos):
-        new_time_position +=  (tempos[i+1].xml_position - tempos[i].xml_position) / tempos[i].qpm * 60 / tempos[i].state.divisions
+      if i + 1 < len(tempos):
+        new_time_position += (tempos[i + 1].xml_position - tempos[i].xml_position) / tempos[i].qpm * 60 / tempos[
+          i].state.divisions
 
     for part in self.parts:
       for measure in part.measures:
@@ -350,13 +353,10 @@ class MusicXMLDocument(object):
               current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
               break
             else:
-              if tempos[i].xml_position <= note.note_duration.xml_position and tempos[i+1].xml_position > note.note_duration.xml_position:
+              if tempos[i].xml_position <= note.note_duration.xml_position and tempos[
+                i + 1].xml_position > note.note_duration.xml_position:
                 current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
                 break
-          note.note_duration.time_position = tempos[i].time_position + (note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
+          note.note_duration.time_position = tempos[i].time_position + (
+                note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
           note.note_duration.seconds = note.note_duration.duration / current_tempo
-
-
-
-
-
