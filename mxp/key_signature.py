@@ -1,5 +1,6 @@
-from mxp.exception  import KeyParseException
+from .exception import KeyParseException
 import copy
+
 
 class KeySignature(object):
   """Internal representation of a MusicXML key signature."""
@@ -30,7 +31,7 @@ class KeySignature(object):
     fifths = self.xml_key.find('fifths')
     if fifths is None:
       raise KeyParseException(
-          'Could not find fifths attribute in key signature.')
+        'Could not find fifths attribute in key signature.')
     self.key = int(self.xml_key.find('fifths').text)
     mode = self.xml_key.find('mode')
     # Anything not minor will be interpreted as major

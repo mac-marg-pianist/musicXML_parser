@@ -1,5 +1,6 @@
-import mxp.constants
+from . import constants
 import copy
+
 
 class Tempo(object):
   """Internal representation of a MusicXML tempo."""
@@ -21,7 +22,7 @@ class Tempo(object):
     self.qpm = float(self.xml_sound.get('tempo'))
     if self.qpm == 0:
       # If tempo is 0, set it to default
-      self.qpm = mxp.constants.DEFAULT_QUARTERS_PER_MINUTE
+      self.qpm = constants.DEFAULT_QUARTERS_PER_MINUTE
     self.time_position = self.state.time_position
     self.xml_position = self.state.xml_position
 
@@ -29,4 +30,3 @@ class Tempo(object):
     tempo_str = 'Tempo: ' + str(self.qpm)
     tempo_str += ' (@time: ' + str(self.time_position) + ')'
     return tempo_str
-

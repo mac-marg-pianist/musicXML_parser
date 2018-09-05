@@ -4,6 +4,10 @@ __pycache__/
 .idea/
 *$py.class
 
+# dat files
+*.dat
+
+
 # C extensions
 *.so
 
@@ -103,3 +107,4 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+

@@ -1,13 +1,14 @@
 from fractions import Fraction
 
-import mxp.constants
-from mxp.chord_symbol import ChordSymbol
-from mxp.tempo import Tempo
-from mxp.time_signature import TimeSignature
-from mxp.key_signature import KeySignature
-from mxp.exception import MultipleTimeSignatureException
-from mxp.note import Note
-from mxp.direction import Direction
+from . import constants
+from .chord_symbol import ChordSymbol
+from .tempo import Tempo
+from .time_signature import TimeSignature
+from .key_signature import KeySignature
+from .exception import MultipleTimeSignatureException
+from .note import Note
+from .direction import Direction
+
 
 class Measure(object):
   """Internal represention of the MusicXML <measure> element."""
@@ -20,11 +21,12 @@ class Measure(object):
     self.tempos = []
     self.time_signature = None
     self.key_signature = None
-    self.barline = None            # 'double' or 'final' or None
-    self.repeat = None             # 'start' or 'stop' or None
+    self.barline = None  # 'double' or 'final' or None
+    self.repeat = None  # 'start' or 'stop' or None
     # Cumulative duration in MusicXML duration.
     # Used for time signature calculations
     self.duration = 0
+    self.implicit = False
     self.state = state
     # Record the starting time of this measure so that time signatures
     # can be inserted at the beginning of the measure
@@ -32,13 +34,16 @@ class Measure(object):
     self.start_xml_position = self.state.xml_position
     self._parse()
     # Update the time signature if a partial or pickup measure
-    self._fix_time_signature()
+    # self._fix_time_signature()
 
   def _parse(self):
     """Parse the <measure> element."""
     # Create new direction
-    #direction = []
+    # direction = []
+    if 'implicit' in self.xml_measure.attrib.keys():
+      self.implicit = self.xml_measure.attrib['implicit']
     for child in self.xml_measure:
+
       if child.tag == 'attributes':
         self._parse_attributes(child)
       elif child.tag == 'backup':
@@ -46,7 +51,7 @@ class Measure(object):
       elif child.tag == 'barline':
         self._parse_barline(child)
       elif child.tag == 'direction':
-       # Get tempo in <sound /> and update state tempo and time_position
+        # Get tempo in <sound /> and update state tempo and time_position
         self._parse_direction(child)
         direction = Direction(child, self.state)
         self.directions.append(direction)
@@ -59,7 +64,7 @@ class Measure(object):
         chord_symbol = ChordSymbol(child, self.state)
         self.chord_symbols.append(chord_symbol)
       elif child.tag == 'note':
-         
+
         note = Note(child, self.state)
         self.notes.append(note)
         # Keep track of current note as previous note for chord timings
@@ -78,7 +83,9 @@ class Measure(object):
     Args:
       xml_barline: XML element with tag type 'barline'.
     """
-    style = xml_barline.find('bar-style').text
+    style = xml_barline.find('bar-style')
+    if style:
+      style = xml_barline.find('bar-style').text
     repeat = xml_barline.find('repeat')
 
     if style == 'light-light':
@@ -91,7 +98,7 @@ class Measure(object):
         self.repeat = 'start'
       elif attrib == 'backword':
         self.repeat = 'end'
-    
+
   def _parse_attributes(self, xml_attributes):
     """Parse the MusicXML <attributes> element."""
 
@@ -136,9 +143,9 @@ class Measure(object):
 
     xml_duration = xml_backup.find('duration')
     backup_duration = int(xml_duration.text)
-    midi_ticks = backup_duration * (mxp.constants.STANDARD_PPQ
+    midi_ticks = backup_duration * (constants.STANDARD_PPQ
                                     / self.state.divisions)
-    seconds = ((midi_ticks / mxp.constants.STANDARD_PPQ)
+    seconds = ((midi_ticks / constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position -= seconds
     self.state.xml_position -= backup_duration
@@ -166,9 +173,9 @@ class Measure(object):
 
     xml_duration = xml_forward.find('duration')
     forward_duration = int(xml_duration.text)
-    midi_ticks = forward_duration * (mxp.constants.STANDARD_PPQ
+    midi_ticks = forward_duration * (constants.STANDARD_PPQ
                                      / self.state.divisions)
-    seconds = ((midi_ticks / mxp.constants.STANDARD_PPQ)
+    seconds = ((midi_ticks / constants.STANDARD_PPQ)
                * self.state.seconds_per_quarter)
     self.state.time_position += seconds
     self.state.xml_position += forward_duration
@@ -196,8 +203,8 @@ class Measure(object):
       self.state.time_signature = self.time_signature
     else:
       fractional_state_time_signature = Fraction(
-          self.state.time_signature.numerator,
-          self.state.time_signature.denominator)
+        self.state.time_signature.numerator,
+        self.state.time_signature.denominator)
 
       # Check for pickup measure. Reset time signature to smaller numerator
       pickup_measure = False

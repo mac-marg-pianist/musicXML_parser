@@ -1,5 +1,6 @@
-from mxp.exception import AlternatingTimeSignatureException, TimeSignatureParseException
+from .exception import AlternatingTimeSignatureException, TimeSignatureParseException
 import copy
+
 
 class TimeSignature(object):
   """Internal representation of a MusicXML time signature.
@@ -35,7 +36,7 @@ class TimeSignature(object):
       self.denominator = int(beat_type)
     except ValueError:
       raise TimeSignatureParseException(
-          'Could not parse time signature: {}/{}'.format(beats, beat_type))
+        'Could not parse time signature: {}/{}'.format(beats, beat_type))
     self.time_position = self.state.time_position
     self.xml_position = self.state.xml_position
 

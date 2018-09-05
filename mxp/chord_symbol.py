@@ -1,5 +1,6 @@
-import mxp.constants
-from mxp.exception  import ChordSymbolParseException
+from . import constants
+from .exception import ChordSymbolParseException
+
 
 class ChordSymbol(object):
   """Internal representation of a MusicXML chord symbol <harmony> element.
@@ -38,58 +39,58 @@ class ChordSymbol(object):
   # http://usermanuals.musicxml.com/MusicXML/Content/ST-MusicXML-kind-value.htm
 
   CHORD_KIND_ABBREVIATIONS = {
-      # These chord kinds are in the MusicXML spec.
-      'major': '',
-      'minor': 'm',
-      'augmented': 'aug',
-      'diminished': 'dim',
-      'dominant': '7',
-      'major-seventh': 'maj7',
-      'minor-seventh': 'm7',
-      'diminished-seventh': 'dim7',
-      'augmented-seventh': 'aug7',
-      'half-diminished': 'm7b5',
-      'major-minor': 'm(maj7)',
-      'major-sixth': '6',
-      'minor-sixth': 'm6',
-      'dominant-ninth': '9',
-      'major-ninth': 'maj9',
-      'minor-ninth': 'm9',
-      'dominant-11th': '11',
-      'major-11th': 'maj11',
-      'minor-11th': 'm11',
-      'dominant-13th': '13',
-      'major-13th': 'maj13',
-      'minor-13th': 'm13',
-      'suspended-second': 'sus2',
-      'suspended-fourth': 'sus',
-      'pedal': 'ped',
-      'power': '5',
-      'none': 'N.C.',
+    # These chord kinds are in the MusicXML spec.
+    'major': '',
+    'minor': 'm',
+    'augmented': 'aug',
+    'diminished': 'dim',
+    'dominant': '7',
+    'major-seventh': 'maj7',
+    'minor-seventh': 'm7',
+    'diminished-seventh': 'dim7',
+    'augmented-seventh': 'aug7',
+    'half-diminished': 'm7b5',
+    'major-minor': 'm(maj7)',
+    'major-sixth': '6',
+    'minor-sixth': 'm6',
+    'dominant-ninth': '9',
+    'major-ninth': 'maj9',
+    'minor-ninth': 'm9',
+    'dominant-11th': '11',
+    'major-11th': 'maj11',
+    'minor-11th': 'm11',
+    'dominant-13th': '13',
+    'major-13th': 'maj13',
+    'minor-13th': 'm13',
+    'suspended-second': 'sus2',
+    'suspended-fourth': 'sus',
+    'pedal': 'ped',
+    'power': '5',
+    'none': 'N.C.',
 
-      # These are not in the spec, but show up frequently in the wild.
-      'dominant-seventh': '7',
-      'augmented-ninth': 'aug9',
-      'minor-major': 'm(maj7)',
+    # These are not in the spec, but show up frequently in the wild.
+    'dominant-seventh': '7',
+    'augmented-ninth': 'aug9',
+    'minor-major': 'm(maj7)',
 
-      # Some abbreviated kinds also show up frequently in the wild.
-      '': '',
-      'min': 'm',
-      'aug': 'aug',
-      'dim': 'dim',
-      '7': '7',
-      'maj7': 'maj7',
-      'min7': 'm7',
-      'dim7': 'dim7',
-      'm7b5': 'm7b5',
-      'minMaj7': 'm(maj7)',
-      '6': '6',
-      'min6': 'm6',
-      'maj69': '6(add9)',
-      '9': '9',
-      'maj9': 'maj9',
-      'min9': 'm9',
-      'sus47': 'sus7'
+    # Some abbreviated kinds also show up frequently in the wild.
+    '': '',
+    'min': 'm',
+    'aug': 'aug',
+    'dim': 'dim',
+    '7': '7',
+    'maj7': 'maj7',
+    'min7': 'm7',
+    'dim7': 'dim7',
+    'm7b5': 'm7b5',
+    'minMaj7': 'm(maj7)',
+    '6': '6',
+    'min6': 'm6',
+    'maj69': '6(add9)',
+    '9': '9',
+    'maj9': 'maj9',
+    'min9': 'm9',
+    'sus47': 'sus7'
   }
 
   def __init__(self, xml_harmony, state):
@@ -165,8 +166,8 @@ class ChordSymbol(object):
         except ValueError:
           raise ChordSymbolParseException('Non-integer offset: ' +
                                           str(child.text))
-        midi_ticks = offset * mxp.constants.STANDARD_PPQ / self.state.divisions
-        seconds = (midi_ticks / mxp.constants.STANDARD_PPQ *
+        midi_ticks = offset * constants.STANDARD_PPQ / self.state.divisions
+        seconds = (midi_ticks / constants.STANDARD_PPQ *
                    self.state.seconds_per_quarter)
         self.time_position += seconds
         self.xml_position += offset
@@ -190,7 +191,7 @@ class ChordSymbol(object):
 
     if self.state.transpose:
       raise ChordSymbolParseException(
-          'Transposition of chord symbols currently unsupported')
+        'Transposition of chord symbols currently unsupported')
 
     return step + alter_string
 
@@ -272,6 +273,3 @@ class ChordSymbol(object):
       if self.bass:
         figure += '/' + self.bass
       return figure
-
-
-
