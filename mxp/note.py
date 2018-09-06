@@ -37,7 +37,7 @@ class Note(object):
     self.on_beat = False
     self.is_print_object = True
     self.following_rest_duration = 0
-    self.measure_number = 0
+    self.measure_number = state.measure_number
 
     self._parse()
 
