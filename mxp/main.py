@@ -84,6 +84,10 @@ class MusicXMLParserState(object):
     # Keep track of chord index
     self.chord_index = 0
 
+    # Keep track of measure number
+    self.measure_number = 0
+
+
 
 class MusicXMLDocument(object):
   """Internal representation of a MusicXML Document.

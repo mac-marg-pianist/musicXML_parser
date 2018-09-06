@@ -32,10 +32,11 @@ class Part(object):
     self._state.transpose = 0
 
     xml_measures = xml_part.findall('measure')
-    for measure in xml_measures:
+    for (measure_number, measure) in enumerate(xml_measures):
       # Issue #674: Repair measures that do not contain notes
       # by inserting a whole measure rest
       self._repair_empty_measure(measure)
+      self._state.measure_number = measure_number
       parsed_measure = Measure(measure, self._state)
       self.measures.append(parsed_measure)
 
