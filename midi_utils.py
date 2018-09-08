@@ -127,7 +127,7 @@ def cal_pedal_refresh_in_note(note, notes, pedals, pedals_positions, pd_ind1, pd
             lowest_pedal_value = pedal.value
             lowest_pedal = pedal
     if lowest_pedal:
-        time_ratio = (lowest_pedal.start - note.start) / (note.end - note.start)
+        time_ratio = (lowest_pedal.start - note.start) #/ (note.end - note.start)
         return lowest_pedal_value, time_ratio
     else:
         return lowest_pedal_value, 0
@@ -181,7 +181,7 @@ def cal_pedal_cut_after(note, notes, pedals, pedals_positions, threshold=30):
             break
     # if last_note.end > note.start:
     #     return False, 0
-    pd1 = binaryIndex(pedals_positions, note.start)
+    pd1 = binaryIndex(pedals_positions, note.end)
     pd2 = binaryIndex(pedals_positions, next_onset)
 
     for i in range(pd1, pd2):
@@ -191,7 +191,7 @@ def cal_pedal_cut_after(note, notes, pedals, pedals_positions, threshold=30):
             lowest_pedal = pedal
     notes.sort(key=lambda x:x.start)
     if lowest_pedal:
-        time_ratio = (lowest_pedal.start - note_end) / (note.end - note.start)
+        time_ratio = (lowest_pedal.start - note_end)
         return lowest_pedal_value, time_ratio
     else:
         return lowest_pedal_value, 0
@@ -400,14 +400,14 @@ def save_note_pedal_to_CC(midi_obj):
         instrument.control_changes.append(soft_pedal)
 
         # if note.pedal_refresh:
-        refresh_time = note.start + (note.end - note.start) * note.pedal_refresh_time
+        refresh_time = note.start + note.pedal_refresh_time #(note.end - note.start) * note.pedal_refresh_time
         pedal3 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_refresh), time=refresh_time+eps)
 
         instrument.control_changes.append(pedal3)
 
         # if note.pedal_cut:
         # cut_time = note.start - (note.end - note.start) * note.pedal_cut_time
-        cut_time = note.end + (note.end - note.start) * note.pedal_cut_time
+        cut_time = note.end + note.pedal_cut_time
         pedal4 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_cut), time=cut_time+eps)
         instrument.control_changes.append(pedal4)
 
