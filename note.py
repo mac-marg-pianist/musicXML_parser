@@ -82,6 +82,8 @@ class Note(object):
                 self.state.previous_grace_notes.append(self)
             elif child.tag == 'staff':
                 self.staff = int(child.text)
+            elif child.tag == 'slur':
+                self._parse_slur(child)
             else:
                 # Ignore other tag types because they are not relevant to mxp.
                 pass
@@ -206,3 +208,6 @@ class Note(object):
         self.note_duration.time_position += -total_seconds_grace
         self.state.previous_grace_notes = []
         print(self)
+
+    def _parse_slur(self):
+        return
