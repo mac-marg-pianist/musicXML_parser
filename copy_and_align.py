@@ -22,7 +22,7 @@ parser.add_argument("--input_dir", default=INPUT_DIR,
 parser.add_argument("--align_dir", default='/home/ilcobo2/AlignmentTool_v2',
                     help="Abs path to Nakamura's Alignment tool")
 args = parser.parse_args()
-
+INPUT_DIR = args.input_dir
 
 os.chdir(args.align_dir)
 
@@ -40,10 +40,10 @@ midi_files = utils.find_files_in_subdir(INPUT_DIR, '*.mid')
 n_match = 0
 n_unmatch = 0
 for midi_file in midi_files:
-    if 'midi.mid' in midi_file or 'XP.mid' in midi_file:
+    if 'midi.mid' in midi_file or 'XP.mid' in midi_file or 'midi_cleaned.mid' in midi_file:
         continue
 
-    if 'Chopin_Etude_op_25/10/KOLESO02.mid' in midi_file:
+    if 'Chopin_Sonata' in midi_file:
         continue
 
     if os.path.isfile(midi_file.replace('.mid', '_infer_corresp.txt')):
@@ -52,7 +52,9 @@ for midi_file in midi_files:
 
     file_folder, file_name = utils.split_head_and_tail(midi_file)
     perform_midi = midi_file
-    score_midi = os.path.join(file_folder, 'midi.mid')
+    score_midi = os.path.join(file_folder, 'midi_cleaned.mid')
+    if not os.path.isfile(score_midi):
+        continue
     print(perform_midi)
     print(score_midi)
 
