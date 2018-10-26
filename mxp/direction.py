@@ -33,7 +33,10 @@ class Direction(object):
       return
     child = child_list[0]
     staff = direction.find('staff')
-    self.staff = staff.text
+    if staff:
+      self.staff = staff.text
+    else:
+      self.staff = 1
     if 'placement' in direction.attrib.keys():
       self.placement = direction.attrib['placement']
     if child is not None:
