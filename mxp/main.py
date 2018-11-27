@@ -87,6 +87,9 @@ class MusicXMLParserState(object):
     # Keep track of measure number
     self.measure_number = 0
 
+    # Keep track of unsolved ending bracket
+    self.first_ending_discontinue = False
+
 
 
 class MusicXMLDocument(object):
