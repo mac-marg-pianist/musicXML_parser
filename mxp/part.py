@@ -83,7 +83,6 @@ class Part(object):
         current_measure_number += 1
 
 
-
     #
     # for (measure_number, measure) in enumerate(xml_measures):
     #   # Issue #674: Repair measures that do not contain notes
