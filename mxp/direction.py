@@ -35,7 +35,7 @@ class Direction(object):
     if staff:
       self.staff = staff.text
     else:
-      self.staff = 1
+      self.staff = None
     if 'placement' in direction.attrib.keys():
       self.placement = direction.attrib['placement']
     for child in child_list:
