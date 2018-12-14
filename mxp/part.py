@@ -1,6 +1,7 @@
 from .measure import Measure
 from .score_part import ScorePart
 import xml.etree.ElementTree as ET
+import copy
 
 
 class Part(object):
@@ -32,13 +33,65 @@ class Part(object):
     self._state.transpose = 0
 
     xml_measures = xml_part.findall('measure')
-    for (measure_number, measure) in enumerate(xml_measures):
-      # Issue #674: Repair measures that do not contain notes
-      # by inserting a whole measure rest
+    measure_length = len(xml_measures)
+    current_measure_number = 0
+    segno_measure = None
+    previous_forward_repeats = []
+    resolved_repeats = []
+    resolved_first_ending = []
+    end_measure_of_first_ending = []
+    fine_activated = False
+
+    while current_measure_number < measure_length:
+      measure = xml_measures[current_measure_number]
+
       self._repair_empty_measure(measure)
-      self._state.measure_number = measure_number
+      self._state.measure_number = current_measure_number
+      old_state = copy.copy(self._state)
       parsed_measure = Measure(measure, self._state)
+
+      if parsed_measure.first_ending_start:
+        if current_measure_number in resolved_first_ending:
+          ending_index = resolved_first_ending.index(current_measure_number)
+          current_measure_number = end_measure_of_first_ending[ending_index] + 1
+          self._state = old_state
+          continue
+        else:
+          resolved_first_ending.append(current_measure_number)
+
       self.measures.append(parsed_measure)
+
+      if parsed_measure.first_ending_stop:
+        end_measure_of_first_ending.append(current_measure_number)
+
+      if parsed_measure.repeat == 'start':
+        previous_forward_repeats.append(current_measure_number)
+        current_measure_number += 1
+      elif parsed_measure.repeat == 'jump' and current_measure_number not in resolved_repeats:
+        resolved_repeats.append(current_measure_number)
+        if len(previous_forward_repeats) == 0:
+          current_measure_number = 0
+        else:
+          current_measure_number = previous_forward_repeats[-1]
+          del previous_forward_repeats[-1]
+      elif parsed_measure.dacapo == 'jump':
+        current_measure_number = 0
+        fine_activated = True
+      elif parsed_measure.fine and fine_activated:
+        break
+      else:
+        current_measure_number += 1
+
+
+
+    #
+    # for (measure_number, measure) in enumerate(xml_measures):
+    #   # Issue #674: Repair measures that do not contain notes
+    #   # by inserting a whole measure rest
+    #   self._repair_empty_measure(measure)
+    #   self._state.measure_number = measure_number
+    #   parsed_measure = Measure(measure, self._state)
+    #   self.measures.append(parsed_measure)
 
   def _repair_empty_measure(self, measure):
     """Repair a measure if it is empty by inserting a whole measure rest.

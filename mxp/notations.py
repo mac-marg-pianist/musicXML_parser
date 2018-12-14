@@ -121,3 +121,4 @@ class Slur:
     self.end_xml_position = 0
     self.index = 0
     self.voice = 0
+    print('slur', type, number)

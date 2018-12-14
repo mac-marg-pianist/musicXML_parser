@@ -22,7 +22,14 @@ class Measure(object):
     self.time_signature = None
     self.key_signature = None
     self.barline = None  # 'double' or 'final' or None
-    self.repeat = None  # 'start' or 'stop' or None
+    self.repeat = None  # 'start' or 'jump' or None
+    self.segno = None  # 'start' or 'jump' or None
+    self.coda = None  # 'start' or 'jump' or None
+    self.dacapo = None  # 'jump' or None
+    self.fine = False  # True  or False
+    self.first_ending_start = False  # 1 or 2 or None
+    self.first_ending_stop = False  # 'start' or 'end' or None
+
     # Cumulative duration in MusicXML duration.
     # Used for time signature calculations
     self.duration = 0
@@ -84,20 +91,30 @@ class Measure(object):
       xml_barline: XML element with tag type 'barline'.
     """
     style = xml_barline.find('bar-style')
-    if style:
+    if style is not None:
       style = xml_barline.find('bar-style').text
     repeat = xml_barline.find('repeat')
+    ending = xml_barline.find('ending')
 
     if style == 'light-light':
       self.barline = 'double'
     elif style == 'light-heavy':
       self.barline = 'final'
-    elif repeat is not None:
+
+    if repeat is not None:
       attrib = repeat.attrib['direction']
       if attrib == 'forward':
         self.repeat = 'start'
-      elif attrib == 'backword':
-        self.repeat = 'end'
+      elif attrib == 'backward':
+        self.repeat = 'jump'
+
+    if ending is not None:
+      ending_num = ending.attrib['number']
+      ending_type = ending.attrib['type']
+      if ending_num == '1' and ending_type == 'start':
+        self.first_ending_start = True
+      elif ending_num == '1' and ending_type == 'stop':
+        self.first_ending_stop = True
 
   def _parse_attributes(self, xml_attributes):
     """Parse the MusicXML <attributes> element."""
@@ -161,6 +178,19 @@ class Measure(object):
           self.state.seconds_per_quarter = 60 / self.state.qpm
           if child.get('dynamics') is not None:
             self.state.velocity = int(child.get('dynamics'))
+        elif child.get('dacapo') is not None:
+          self.dacapo = 'jump'
+        elif child.get('fine') is not None:
+          self.fine = True
+        elif child.get('alcoda') is not None:
+          self.coda = 'jump'
+        elif child.get('coda') is not None:
+          self.coda = 'start'
+        elif child.get('dalsegno') is not None:
+          self.segno = 'jump'
+        elif child.get('segno') is not None:
+          self.segno = 'start'
+
 
   def _parse_forward(self, xml_forward):
     """Parse the MusicXML <forward> element.

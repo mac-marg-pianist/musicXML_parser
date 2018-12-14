@@ -31,7 +31,6 @@ class Direction(object):
     child_list = direction.find('direction-type').getchildren()
     if len(child_list) == 0:
       return
-    child = child_list[0]
     staff = direction.find('staff')
     if staff:
       self.staff = staff.text
@@ -39,19 +38,20 @@ class Direction(object):
       self.staff = None
     if 'placement' in direction.attrib.keys():
       self.placement = direction.attrib['placement']
-    if child is not None:
-      if child.tag == "dynamics":
-        self._parse_dynamics(child)
-      elif child.tag == "pedal":
-        self._parse_pedal(child)
-      elif child.tag == "wedge":
-        self._parse_wedge(child) 
-      elif child.tag == "words" or child.tag=="other-dynamics":
-        self._parse_words(child)
-      elif child.tag=='octave-shift':
-        self._parse_octave_shift(child)
-      elif child.tag=='metronome':
-        self._parse_metronome(child)
+    for child in child_list:
+      if child is not None:
+        if child.tag == "dynamics":
+          self._parse_dynamics(child)
+        elif child.tag == "pedal":
+          self._parse_pedal(child)
+        elif child.tag == "wedge":
+          self._parse_wedge(child)
+        elif child.tag == "words" or child.tag=="other-dynamics":
+          self._parse_words(child)
+        elif child.tag=='octave-shift':
+          self._parse_octave_shift(child)
+        elif child.tag=='metronome':
+          self._parse_metronome(child)
 
 
   def _parse_pedal(self, xml_pedal):
@@ -93,6 +93,8 @@ class Direction(object):
         content = content.replace('<sym>dynamicPiano</sym>', 'p')
       while '<sym>dynamicForte</sym>' in content:
         content = content.replace('<sym>dynamicForte</sym>', 'f')
+      while '<sym>dynamicMezzo</sym>' in content:
+        content = content.replace('<sym>dynamicMezzo</sym>', 'm')
 
       self.type = {'type':'words', 'content': content}
     else:
@@ -132,9 +134,10 @@ class Direction(object):
       xml_wedge: XML element with tag type 'wedge'.
     """
     # self.type = {'type':'words', 'content': xml_words.text.decode('utf-8')}
-
-    self.type = {'type': 'words', 'content': xml_words.text}
-
+    if self.type['content'] is None:
+      self.type = {'type': 'words', 'content': xml_words.text}
+    else:
+      self.type['content'] += xml_words.text
 
   def _parse_octave_shift(self, xml_shift):
     """Parse the MusicXML <octave-shift> element.
