@@ -87,6 +87,9 @@ class MusicXMLParserState(object):
     # Keep track of measure number
     self.measure_number = 0
 
+    # Keep track of unsolved ending bracket
+    self.first_ending_discontinue = False
+
 
 
 class MusicXMLDocument(object):
@@ -342,6 +345,13 @@ class MusicXMLDocument(object):
     tempos = self.get_tempos()
 
     tempos.sort(key=lambda x: x.xml_position)
+    if tempos[0].xml_position != 0:
+      default_tempo = Tempo(self._state)
+      default_tempo.xml_position = 0
+      default_tempo.time_position = 0
+      default_tempo.qpm = constants.DEFAULT_QUARTERS_PER_MINUTE
+      default_tempo.state.divisions = tempos[0].state.divisions
+      tempos.insert(0, default_tempo)
     new_time_position = 0
     for i in range(len(tempos)):
       tempos[i].time_position = new_time_position

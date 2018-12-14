@@ -63,8 +63,6 @@ class Measure(object):
         direction = Direction(child, self.state)
         self.directions.append(direction)
         self.state.previous_direction = direction
-
-
       elif child.tag == 'forward':
         self._parse_forward(child)
       elif child.tag == 'harmony':
@@ -115,6 +113,8 @@ class Measure(object):
         self.first_ending_start = True
       elif ending_num == '1' and ending_type == 'stop':
         self.first_ending_stop = True
+      elif ending_num == '1' and ending_type == 'discontinue':
+        self.state.first_ending_discontinue = True
 
   def _parse_attributes(self, xml_attributes):
     """Parse the MusicXML <attributes> element."""
@@ -190,6 +190,12 @@ class Measure(object):
           self.segno = 'jump'
         elif child.get('segno') is not None:
           self.segno = 'start'
+      if self.state.first_ending_discontinue and child.tag=='direction-type':
+        child_list = child.getchildren()
+        for sub_child in child_list:
+          if sub_child.tag=='bracket' and sub_child.get('type')=='stop':
+            self.first_ending_stop = True
+            self.state.first_ending_discontinue = False
 
 
   def _parse_forward(self, xml_forward):
@@ -274,3 +280,4 @@ class Measure(object):
         new_time_signature.xml_position = self.start_xml_position
         self.time_signature = new_time_signature
         self.state.time_signature = new_time_signature
+
