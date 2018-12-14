@@ -82,6 +82,8 @@ class Note(object):
         self.state.previous_grace_notes.append(self)
       elif child.tag == 'staff':
         self.staff = int(child.text)
+      elif child.tag == 'cue':
+        self.note_notations.is_cue = True
       else:
         # Ignore other tag types because they are not relevant to mxp.
         pass

@@ -19,6 +19,7 @@ class Notations(object):
   8) tied
   9) trill
   10) tuplet
+  11) cue (small note)
 
   """
 
@@ -36,6 +37,7 @@ class Notations(object):
     self.is_trill = False
     self.is_tuplet = False
     self.is_strong_accent = False
+    self.is_cue = False
     self.wavy_line = None
     self.slurs = []
 

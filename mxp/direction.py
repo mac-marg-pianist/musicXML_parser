@@ -95,6 +95,8 @@ class Direction(object):
         content = content.replace('<sym>dynamicForte</sym>', 'f')
       while '<sym>dynamicMezzo</sym>' in content:
         content = content.replace('<sym>dynamicMezzo</sym>', 'm')
+      while '<sym>dynamicSforzando</sym>' in content:
+        content = content.replace('<sym>dynamicSforzando</sym>', 'sf')
 
       self.type = {'type':'words', 'content': content}
     else:
