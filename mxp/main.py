@@ -90,6 +90,11 @@ class MusicXMLParserState(object):
     # Keep track of unsolved ending bracket
     self.first_ending_discontinue = False
 
+    # Keep track of beam status
+    self.is_beam_start = False
+    self.is_beam_continue = False
+    self.is_beam_stop = False
+
 
 
 class MusicXMLDocument(object):

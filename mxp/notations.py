@@ -38,8 +38,14 @@ class Notations(object):
     self.is_tuplet = False
     self.is_strong_accent = False
     self.is_cue = False
+    self.is_beam_start = False
+    self.is_beam_continue = False
+    self.is_beam_stop = False
     self.wavy_line = None
     self.slurs = []
+    self.is_slur_start = False
+    self.is_slur_stop = False
+    self.is_slur_continue = False
 
   def parse_notations(self, xml_notations):
     """Parse the MusicXML <Notations> element."""

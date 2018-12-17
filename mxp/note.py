@@ -56,6 +56,9 @@ class Note(object):
         self.is_in_chord = True
         self.state.chord_index += 1
         self.chord_index = self.state.chord_index
+        self.note_notations.is_beam_start = self.state.is_beam_start
+        self.note_notations.is_beam_continue = self.state.is_beam_continue
+        self.note_notations.is_beam_stop = self.state.is_beam_stop
       elif child.tag == 'duration':  # if the note is_grace_note, the note does not have 'duration' child.
         self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note, child.text)
         # if len(self.state.previous_grace_notes) > 0:
@@ -84,6 +87,8 @@ class Note(object):
         self.staff = int(child.text)
       elif child.tag == 'cue':
         self.note_notations.is_cue = True
+      elif child.tag == 'beam':
+        self._parse_beam(child.text)
       else:
         # Ignore other tag types because they are not relevant to mxp.
         pass
@@ -91,6 +96,9 @@ class Note(object):
     # reset state.chord_index if it is not chord note
     if self.is_in_chord == False:
       self.state.chord_index = 0
+      self.state.is_beam_start = False
+      self.state.is_beam_continue = False
+      self.state.is_beam_stop
 
   def _parse_pitch(self, xml_pitch):
     """Parse the MusicXML <pitch> element."""
@@ -168,6 +176,18 @@ Args:
     pitch_class = (pitch_class + int(alter))
     midi_pitch = (12 + pitch_class) + (int(octave) * 12)
     return midi_pitch
+
+  def _parse_beam(self, beam_text):
+    if beam_text == 'begin':
+      self.note_notations.is_beam_start = True
+      self.state.is_beam_start = True
+    elif beam_text == 'end':
+      self.note_notations.is_beam_stop = True
+      self.state.is_beam_stop = True
+    elif beam_text == 'continue':
+      self.note_notations.is_beam_continue = True
+      self.state.is_beam_continue = True
+
 
   def __str__(self):
     note_string = '{duration: ' + str(self.note_duration.duration)
