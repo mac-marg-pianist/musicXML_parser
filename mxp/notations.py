@@ -46,6 +46,7 @@ class Notations(object):
     self.is_slur_start = False
     self.is_slur_stop = False
     self.is_slur_continue = False
+    self.is_slash = False
 
   def parse_notations(self, xml_notations):
     """Parse the MusicXML <Notations> element."""

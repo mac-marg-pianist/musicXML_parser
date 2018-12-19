@@ -37,6 +37,7 @@ class Note(object):
     self.on_beat = False
     self.is_print_object = True
     self.following_rest_duration = 0
+    self.followed_by_fermata_rest = False
     self.measure_number = state.measure_number
 
     self._parse()
@@ -83,6 +84,8 @@ class Note(object):
       elif child.tag == 'grace':
         self.note_duration.parse_duration(self.is_in_chord, True, 0)
         self.state.previous_grace_notes.append(self)
+        if 'slash' in child.attrib.keys() and child.attrib['slash'] == 'yes':
+          self.note_notations.is_slash = True
       elif child.tag == 'staff':
         self.staff = int(child.text)
       elif child.tag == 'cue':
