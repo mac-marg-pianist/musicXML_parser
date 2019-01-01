@@ -20,6 +20,7 @@ class Direction(object):
     self.type = {'type': None, 'content': None}
     self.state = copy.copy(state)
     self.placement = None
+    self.staff = None
     self.time_position = state.time_position
     self.xml_position = state.xml_position
     self._parse()
@@ -32,10 +33,8 @@ class Direction(object):
     if len(child_list) == 0:
       return
     staff = direction.find('staff')
-    if staff:
+    if staff is not None:
       self.staff = staff.text
-    else:
-      self.staff = None
     if 'placement' in direction.attrib.keys():
       self.placement = direction.attrib['placement']
     for child in child_list:
@@ -97,6 +96,12 @@ class Direction(object):
         content = content.replace('<sym>dynamicMezzo</sym>', 'm')
       while '<sym>dynamicSforzando</sym>' in content:
         content = content.replace('<sym>dynamicSforzando</sym>', 'sf')
+      while '<sym>dynamicRinforzando</sym>' in content:
+        content = content.replace('<sym>dynamicRinforzando</sym>', 'r')
+      while '<sym>dynamicNiente</sym>' in content:
+        content = content.replace('<sym>dynamicNiente</sym>', 'n')
+      while '<sym>dynamicZ</sym>' in content:
+        content = content.replace('<sym>dynamicZ</sym>', 'z')
 
       self.type = {'type':'words', 'content': content}
     else:
