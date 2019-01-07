@@ -26,7 +26,7 @@ class NoteDuration(object):
     self.tuplet_ratio = Fraction(1, 1)  # Ratio for tuplets (default to 1)
     self.is_grace_note = True  # Assume true until not found
     self.state = state
-    self.after_grace_note = False  # The note is preceded by a grace note(s)
+    self.preceded_by_grace_note = False  # The note is preceded by a grace note(s)
     self.grace_order = 0  # If there are multiple grace notes, record the order of notes (-1, -2)
     self.num_grace = 0
 
