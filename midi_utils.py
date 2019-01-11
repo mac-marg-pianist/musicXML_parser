@@ -372,24 +372,27 @@ def binaryIndex(alist, item):
     return last
 
 
-def save_note_pedal_to_CC(midi_obj):
+def save_note_pedal_to_CC(midi_obj, bool_pedal=False, disklavier=False):
     # input = pretty midi object with pedal inf embedded in note (e.g. note.pedal_at_start etc.)
     assert len(midi_obj.instruments) == 1
     instrument = midi_obj.instruments[0]
     notes = instrument.notes
     notes.sort(key=lambda note:note.start)
     num_notes = len(notes)
-    eps = 0.05
+    eps = 0.03  # hyper-parameter
 
     def to_8(value):
         # if value == True:
         #     return 127
         # else:
         #     return 0
-        return int(min(max(value,0),127))
+        return int(min(max(vale0,0),127))
 
+    primary_pedal = []
+    secondary_pedal = []
     for i in range(num_notes):
         note = notes[i]
+        next_note = notes[min(i+1, num_notes-1)]
         # print(note.start, note.end, note.pitch, note.pedal_refresh, note.pedal_cut)
         pedal1 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_at_start), time=note.start-eps)
         pedal2 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_at_end), time=note.end-eps)
@@ -398,18 +401,25 @@ def save_note_pedal_to_CC(midi_obj):
         instrument.control_changes.append(pedal1)
         instrument.control_changes.append(pedal2)
         instrument.control_changes.append(soft_pedal)
+        primary_pedal.append(pedal1)
+        primary_pedal.append(pedal2)
 
         # if note.pedal_refresh:
         refresh_time = note.start + note.pedal_refresh_time #(note.end - note.start) * note.pedal_refresh_time
-        pedal3 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_refresh), time=refresh_time+eps)
-
-        instrument.control_changes.append(pedal3)
-
+        pedal3 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_refresh), time=refresh_time)
+        if pedal3.time < pedal2.time:
+            secondary_pedal.append(pedal3)
+            instrument.control_changes.append(pedal3)
+        #
         # if note.pedal_cut:
         # cut_time = note.start - (note.end - note.start) * note.pedal_cut_time
         cut_time = note.end + note.pedal_cut_time
-        pedal4 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_cut), time=cut_time+eps)
+        pedal4 = pretty_midi.ControlChange(number=64, value=to_8(note.pedal_cut), time=cut_time)
         instrument.control_changes.append(pedal4)
+        secondary_pedal.append(pedal4)
+    primary_pedal.sort(key=lambda x: x.time)
+
+
 
     last_note_end = notes[-1].end
     # end pedal 3 seconds after the last note
