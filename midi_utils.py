@@ -386,7 +386,7 @@ def save_note_pedal_to_CC(midi_obj, bool_pedal=False, disklavier=False):
         #     return 127
         # else:
         #     return 0
-        return int(min(max(vale0,0),127))
+        return int(min(max(value,0),127))
 
     primary_pedal = []
     secondary_pedal = []
