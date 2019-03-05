@@ -56,6 +56,8 @@ class Notations(object):
       for child in notations:
         if child.tag == 'articulations':
           self._parse_articulations(child)
+        elif child.tag == 'arpeggiate':
+          self.is_arpeggiate = True
         elif child.tag == 'tie':
           self.tie = child.attrib['type']
         elif child.tag == 'tied':
