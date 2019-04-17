@@ -39,6 +39,7 @@ class Note(object):
     self.following_rest_duration = 0
     self.followed_by_fermata_rest = False
     self.measure_number = state.measure_number
+    self.accidental = None
 
     self._parse()
 
@@ -92,6 +93,8 @@ class Note(object):
         self.note_notations.is_cue = True
       elif child.tag == 'beam':
         self._parse_beam(child.text)
+      elif child.tag == 'accidental':
+        self.accidental = child.text
       else:
         # Ignore other tag types because they are not relevant to mxp.
         pass
