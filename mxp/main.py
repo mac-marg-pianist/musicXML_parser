@@ -119,7 +119,7 @@ class MusicXMLDocument(object):
     self.total_time_secs = 0
     self.total_time_duration = 0
     self._parse()
-    self.recalculate_time_position()
+    self._recalculate_time_position()
 
   @staticmethod
   def _get_score(filename):
@@ -242,6 +242,44 @@ class MusicXMLDocument(object):
       if self._state.xml_position > self.total_time_duration:
         self.total_time_duration = self._state.xml_position
 
+  def _recalculate_time_position(self):
+    """ Sometimes, the tempo marking is not located in the first voice.
+    Therefore, the time position of each object should be calculate after parsing the entire tempo objects.
+
+    """
+    tempos = self.get_tempos()
+
+    tempos.sort(key=lambda x: x.xml_position)
+    if tempos[0].xml_position != 0:
+      default_tempo = Tempo(self._state)
+      default_tempo.xml_position = 0
+      default_tempo.time_position = 0
+      default_tempo.qpm = constants.DEFAULT_QUARTERS_PER_MINUTE
+      default_tempo.state.divisions = tempos[0].state.divisions
+      tempos.insert(0, default_tempo)
+    new_time_position = 0
+    for i in range(len(tempos)):
+      tempos[i].time_position = new_time_position
+      if i + 1 < len(tempos):
+        new_time_position += (tempos[i + 1].xml_position - tempos[i].xml_position) / tempos[i].qpm * 60 / tempos[
+          i].state.divisions
+
+    for part in self.parts:
+      for measure in part.measures:
+        for note in measure.notes:
+          for i in range(len(tempos)):
+            if i + 1 == len(tempos):
+              current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
+              break
+            else:
+              if tempos[i].xml_position <= note.note_duration.xml_position and tempos[
+                i + 1].xml_position > note.note_duration.xml_position:
+                current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
+                break
+          note.note_duration.time_position = tempos[i].time_position + (
+                  note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
+          note.note_duration.seconds = note.note_duration.duration / current_tempo
+
   def get_chord_symbols(self):
     """Return a list of all the chord symbols used in this score."""
     chord_symbols = []
@@ -346,36 +384,11 @@ class MusicXMLDocument(object):
 
     return tempos
 
-  def recalculate_time_position(self):
-    tempos = self.get_tempos()
+  def get_measure_positions(self):
+    part = self.parts[0]
+    measure_positions = []
 
-    tempos.sort(key=lambda x: x.xml_position)
-    if tempos[0].xml_position != 0:
-      default_tempo = Tempo(self._state)
-      default_tempo.xml_position = 0
-      default_tempo.time_position = 0
-      default_tempo.qpm = constants.DEFAULT_QUARTERS_PER_MINUTE
-      default_tempo.state.divisions = tempos[0].state.divisions
-      tempos.insert(0, default_tempo)
-    new_time_position = 0
-    for i in range(len(tempos)):
-      tempos[i].time_position = new_time_position
-      if i + 1 < len(tempos):
-        new_time_position += (tempos[i + 1].xml_position - tempos[i].xml_position) / tempos[i].qpm * 60 / tempos[
-          i].state.divisions
+    for measure in part.measures:
+      measure_positions.append(measure.start_xml_position)
 
-    for part in self.parts:
-      for measure in part.measures:
-        for note in measure.notes:
-          for i in range(len(tempos)):
-            if i + 1 == len(tempos):
-              current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
-              break
-            else:
-              if tempos[i].xml_position <= note.note_duration.xml_position and tempos[
-                i + 1].xml_position > note.note_duration.xml_position:
-                current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
-                break
-          note.note_duration.time_position = tempos[i].time_position + (
-                note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
-          note.note_duration.seconds = note.note_duration.duration / current_tempo
+    return measure_positions

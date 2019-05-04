@@ -88,20 +88,21 @@ class Direction(object):
     dynamic = xml_dynamics.getchildren()[0].tag
     if dynamic == 'other-dynamics':
       content = xml_dynamics.getchildren()[0].text
-      while '<sym>dynamicPiano</sym>' in content:
-        content = content.replace('<sym>dynamicPiano</sym>', 'p')
-      while '<sym>dynamicForte</sym>' in content:
-        content = content.replace('<sym>dynamicForte</sym>', 'f')
-      while '<sym>dynamicMezzo</sym>' in content:
-        content = content.replace('<sym>dynamicMezzo</sym>', 'm')
-      while '<sym>dynamicSforzando</sym>' in content:
-        content = content.replace('<sym>dynamicSforzando</sym>', 'sf')
-      while '<sym>dynamicRinforzando</sym>' in content:
-        content = content.replace('<sym>dynamicRinforzando</sym>', 'r')
-      while '<sym>dynamicNiente</sym>' in content:
-        content = content.replace('<sym>dynamicNiente</sym>', 'n')
-      while '<sym>dynamicZ</sym>' in content:
-        content = content.replace('<sym>dynamicZ</sym>', 'z')
+      if content:
+        while '<sym>dynamicPiano</sym>' in content:
+          content = content.replace('<sym>dynamicPiano</sym>', 'p')
+        while '<sym>dynamicForte</sym>' in content:
+          content = content.replace('<sym>dynamicForte</sym>', 'f')
+        while '<sym>dynamicMezzo</sym>' in content:
+          content = content.replace('<sym>dynamicMezzo</sym>', 'm')
+        while '<sym>dynamicSforzando</sym>' in content:
+          content = content.replace('<sym>dynamicSforzando</sym>', 'sf')
+        while '<sym>dynamicRinforzando</sym>' in content:
+          content = content.replace('<sym>dynamicRinforzando</sym>', 'r')
+        while '<sym>dynamicNiente</sym>' in content:
+          content = content.replace('<sym>dynamicNiente</sym>', 'n')
+        while '<sym>dynamicZ</sym>' in content:
+          content = content.replace('<sym>dynamicZ</sym>', 'z')
 
       self.type = {'type':'words', 'content': content}
     else:
