@@ -29,6 +29,8 @@ class NoteDuration(object):
     self.preceded_by_grace_note = False  # The note is preceded by a grace note(s)
     self.grace_order = 0  # If there are multiple grace notes, record the order of notes (-1, -2)
     self.num_grace = 0
+    self.is_first_grace_note = False
+
 
   def parse_duration(self, is_in_chord, is_grace_note, duration):
     """Parse the duration of a note and compute timings."""
