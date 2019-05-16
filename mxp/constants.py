@@ -1,17 +1,4 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""Constants for music processing in Magenta."""
+"""Constants for music processing"""
 
 # Meter-related constants.
 DEFAULT_QUARTERS_PER_MINUTE = 120.0
@@ -75,16 +62,16 @@ MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]
 # NOTE_KEYS = [[j for j in range(12) if (i - j) % 12 in MAJOR_SCALE]
 #              for i in range(12)]
 NOTE_KEYS = [
-    [0, 1, 3, 5, 7, 8, 10],
-    [1, 2, 4, 6, 8, 9, 11],
-    [0, 2, 3, 5, 7, 9, 10],
-    [1, 3, 4, 6, 8, 10, 11],
-    [0, 2, 4, 5, 7, 9, 11],
-    [0, 1, 3, 5, 6, 8, 10],
-    [1, 2, 4, 6, 7, 9, 11],
-    [0, 2, 3, 5, 7, 8, 10],
-    [1, 3, 4, 6, 8, 9, 11],
-    [0, 2, 4, 5, 7, 9, 10],
-    [1, 3, 5, 6, 8, 10, 11],
-    [0, 2, 4, 6, 7, 9, 11]
+  [0, 1, 3, 5, 7, 8, 10],
+  [1, 2, 4, 6, 8, 9, 11],
+  [0, 2, 3, 5, 7, 9, 10],
+  [1, 3, 4, 6, 8, 10, 11],
+  [0, 2, 4, 5, 7, 9, 11],
+  [0, 1, 3, 5, 6, 8, 10],
+  [1, 2, 4, 6, 7, 9, 11],
+  [0, 2, 3, 5, 7, 8, 10],
+  [1, 3, 4, 6, 8, 9, 11],
+  [0, 2, 4, 5, 7, 9, 10],
+  [1, 3, 5, 6, 8, 10, 11],
+  [0, 2, 4, 6, 7, 9, 11]
 ]
