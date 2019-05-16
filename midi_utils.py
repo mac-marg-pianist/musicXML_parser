@@ -37,7 +37,6 @@ class SustainPedal:
         return self.end is not None and self.end > self.start
 
 
-
 def elongate_offset_by_pedal(midi_obj):
     """elongate off set of notes in midi_object, according to sustain pedal length.
 
@@ -56,6 +55,7 @@ def elongate_offset_by_pedal(midi_obj):
                 note.end = pedal.end
 
     return midi_obj
+
 
 def add_pedal_inf_to_notes(midi_obj):
     assert len(midi_obj.instruments) == 1
