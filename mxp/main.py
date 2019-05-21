@@ -11,6 +11,7 @@ from __future__ import print_function
 from fractions import Fraction
 import xml.etree.ElementTree as ET
 import zipfile
+import math
 from .exception import MusicXMLParseException, MultipleTimeSignatureException
 
 # internal imports
@@ -393,7 +394,8 @@ class MusicXMLDocument(object):
 
     return measure_positions
 
-  def get_notes(self, melody_only=False, grace_note=False):
+
+  def get_notes(self, melody_only=False, grace_note=True):
     notes = []
     previous_grace_notes = []
     rests = []
@@ -776,6 +778,106 @@ class MusicXMLDocument(object):
         pass
 
     return xml_notes
+
+  def get_directions(self):
+    directions = []
+    for part in self.parts:
+        for measure in part.measures:
+            for direction in measure.directions:
+                directions.append(direction)
+
+    directions.sort(key=lambda x: x.xml_position)
+    cleaned_direction = []
+    for i in range(len(directions)):
+        dir = directions[i]
+        if not dir.type == None:
+            if dir.type['type'] == "none":
+                for j in range(i):
+                    prev_dir = directions[i-j-1]
+                    if 'number' in prev_dir.type.keys():
+                        prev_key = prev_dir.type['type']
+                        prev_num = prev_dir.type['number']
+                    else:
+                        continue
+                    if prev_num == dir.type['number']:
+                        if prev_key == "crescendo":
+                            dir.type['type'] = 'crescendo'
+                            break
+                        elif prev_key == "diminuendo":
+                            dir.type['type'] = 'diminuendo'
+                            break
+            cleaned_direction.append(dir)
+        else:
+            print(vars(dir.xml_direction))
+
+    return cleaned_direction
+
+  def get_beat_positions(self, in_measure_level=False):
+    piano = self.parts[0]
+    num_measure = len(piano.measures)
+    time_signatures = self.get_time_signatures()
+    time_sig_position = [time.xml_position for time in time_signatures]
+    beat_piece = []
+    for i in range(num_measure):
+      measure = piano.measures[i]
+      measure_start = measure.start_xml_position
+      corresp_time_sig_idx = self.binary_index(time_sig_position, measure_start)
+      corresp_time_sig = time_signatures[corresp_time_sig_idx]
+      # corresp_time_sig = measure.time_signature
+      full_measure_length = corresp_time_sig.state.divisions * corresp_time_sig.numerator / corresp_time_sig.denominator * 4
+      if i < num_measure - 1:
+        actual_measure_length = piano.measures[i + 1].start_xml_position - measure_start
+      else:
+        actual_measure_length = full_measure_length
+
+      # if i +1 < num_measure:
+      #     measure_length = piano.measures[i+1].start_xml_position - measure_start
+      # else:
+      #     measure_length = measure_start - piano.measures[i-1].start_xml_position
+
+      num_beat_in_measure = corresp_time_sig.numerator
+      if in_measure_level:
+        num_beat_in_measure = 1
+      elif num_beat_in_measure == 6:
+        num_beat_in_measure = 2
+      elif num_beat_in_measure == 9:
+        num_beat_in_measure = 3
+      elif num_beat_in_measure == 12:
+        num_beat_in_measure = 4
+      elif num_beat_in_measure == 18:
+        num_beat_in_measure = 3
+      elif num_beat_in_measure == 24:
+        num_beat_in_measure = 4
+      inter_beat_interval = full_measure_length / num_beat_in_measure
+      if actual_measure_length != full_measure_length:
+        measure.implicit = True
+
+      if measure.implicit:
+        current_measure_length = piano.measures[i + 1].start_xml_position - measure_start
+        length_ratio = current_measure_length / full_measure_length
+        minimum_beat = 1 / num_beat_in_measure
+        num_beat_in_measure = int(math.ceil(length_ratio / minimum_beat))
+        if i == 0:
+          for j in range(-num_beat_in_measure, 0):
+            beat = piano.measures[i + 1].start_xml_position + j * inter_beat_interval
+            if len(beat_piece) > 0 and beat > beat_piece[-1]:
+              beat_piece.append(beat)
+            elif len(beat_piece) == 0:
+              beat_piece.append(beat)
+        else:
+          for j in range(0, num_beat_in_measure):
+            beat = piano.measures[i].start_xml_position + j * inter_beat_interval
+            if beat > beat_piece[-1]:
+              beat_piece.append(beat)
+      else:
+        for j in range(num_beat_in_measure):
+          beat = measure_start + j * inter_beat_interval
+          beat_piece.append(beat)
+        #
+      # for note in measure.notes:
+      #     note.on_beat = check_note_on_beat(note, measure_start, measure_length)
+    return beat_piece
+
 
   def binary_index(self, alist, item):
     first = 0
