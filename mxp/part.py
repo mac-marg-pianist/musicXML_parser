@@ -69,6 +69,8 @@ class Part(object):
         current_measure_number += 1
       elif parsed_measure.repeat == 'jump' and current_measure_number not in resolved_repeats:
         resolved_repeats.append(current_measure_number)
+        if len(resolved_first_ending) != len(end_measure_of_first_ending):
+          end_measure_of_first_ending.append(current_measure_number)
         if len(previous_forward_repeats) == 0:
           current_measure_number = 0
         else:
