@@ -102,9 +102,6 @@ class Note(object):
     # reset state.chord_index if it is not chord note
     if self.is_in_chord == False:
       self.state.chord_index = 0
-      self.state.is_beam_start = False
-      self.state.is_beam_continue = False
-      self.state.is_beam_stop
 
   def _parse_pitch(self, xml_pitch):
     """Parse the MusicXML <pitch> element."""
