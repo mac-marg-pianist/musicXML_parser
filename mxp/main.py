@@ -647,6 +647,7 @@ class MusicXMLDocument(object):
       note = xml_notes[index]
       wavy_duration = wavy.end_xml_position - wavy.xml_position
       note.note_duration.duration = wavy_duration
+      note.note_notations.is_trill = True
       trill_pitch = note.pitch[1]
       next_idx = index + 1
       while next_idx < num_notes and xml_notes[next_idx].note_duration.xml_position < wavy.end_xml_position:
@@ -708,6 +709,7 @@ class MusicXMLDocument(object):
       wavy = wavy_lines[i]
       if wavy.type == 'start' and wavy.end_xml_position == 0:
         wavy_lines.remove(wavy)
+
     return wavy_lines
 
   def extract_and_apply_slurs(self, xml_notes):
