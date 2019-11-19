@@ -5,7 +5,7 @@ from __future__ import print_function
 import os
 import shutil
 import subprocess
-import utils
+from. import utils as utils
 import argparse
 import pretty_midi
 
@@ -54,7 +54,7 @@ for midi_file in midi_files:
     perform_midi = midi_file
     score_midi = os.path.join(file_folder, 'midi_cleaned.mid')
     if not os.path.isfile(score_midi):
-        continue
+        score_midi = os.path.join(file_folder, 'midi.mid')
     print(perform_midi)
     print(score_midi)
 
