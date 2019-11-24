@@ -14,12 +14,12 @@ import pretty_midi
 # midi.mid in same subdirectory will be regarded as score file.
 # make alignment result files in same directory. read Nakamura's manual for detail.
 
-INPUT_DIR = '/home/ilcobo2/chopin'
+INPUT_DIR = '/Users/jeongdasaem/Documents/GitHub/virtuosoNet/pyScoreParser/EmotionData/'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_dir", default=INPUT_DIR,
                     help="Abs path to midi folder")
-parser.add_argument("--align_dir", default='/home/ilcobo2/AlignmentTool_v2',
+parser.add_argument("--align_dir", default='/Users/jeongdasaem/Documents/AlignmentTool_v190813',
                     help="Abs path to Nakamura's Alignment tool")
 args = parser.parse_args()
 INPUT_DIR = args.input_dir
@@ -36,15 +36,21 @@ midi_files = [el.strip() for el in lines]
 
 # read from folder
 midi_files = utils.find_files_in_subdir(INPUT_DIR, '*.mid')
+xml_files = utils.find_files_in_subdir(INPUT_DIR, '*.musicxml')
+score_file_name = {'piece': [], 'path': []}
+
+for xml_file in xml_files:
+    split_name = xml_file.split('/')[-1].split('.')
+    score_file_name['piece'].append('.'.join(split_name[1:4]))
+    score_file_name['path'].append(xml_file)
+
+print(score_file_name)
 
 n_match = 0
 n_unmatch = 0
 for midi_file in midi_files:
-    
-    if 'midi.mid' in midi_file or 'XP.mid' in midi_file or 'midi_cleaned.mid' in midi_file:
-        continue
-
-    if 'Chopin_Sonata' in midi_file:
+    file_name = midi_file.split('/')[-1]
+    if file_name.split('.')[0][0].isdigit():
         continue
 
     if os.path.isfile(midi_file.replace('.mid', '_infer_corresp.txt')):
@@ -53,9 +59,14 @@ for midi_file in midi_files:
 
     file_folder, file_name = utils.split_head_and_tail(midi_file)
     perform_midi = midi_file
-    score_midi = os.path.join(file_folder, 'midi_cleaned.mid')
-    if not os.path.isfile(score_midi):
-        score_midi = os.path.join(file_folder, 'midi.mid')
+    piece_name = '.'.join(file_name.split('.')[0:3])
+
+    if piece_name in score_file_name['piece']:
+        piece_index = score_file_name['piece'].index(piece_name)
+    else:
+        continue
+    score_midi = ".".join(score_file_name['path'][piece_index].split('.')[0:-1]) + ".mid"
+
     print(perform_midi)
     print(score_midi)
 
