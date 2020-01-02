@@ -8,9 +8,8 @@ def get_playable_notes(xml_part, melody_only=False):
         measure_number += 1
 
     notes, rests = classify_notes(notes, melody_only=melody_only)
-
+    mark_preceded_by_grace_note_to_chord_notes(notes)
     '''
-    notes = self.apply_after_grace_note_to_chord_notes(notes)
     if melody_only:
         notes = self.delete_chord_notes_for_melody(notes)
     notes = self.apply_tied_notes(notes)
@@ -26,7 +25,8 @@ def get_playable_notes(xml_part, melody_only=False):
 
 
 def classify_notes(notes, melody_only=False):
-    # classify notes into notes, grace_notes, and rests.
+    # classify notes into notes, and rests.
+    # calculate grace note order, mark note with preceeding grace notes
     grace_tmp = []
     rests = []
     for note in notes:
@@ -65,3 +65,17 @@ def classify_notes(notes, melody_only=False):
                     rests.append(note)
 
     return notes, rests
+
+
+
+def mark_preceded_by_grace_note_to_chord_notes(notes):
+    for note in notes:
+        if note.note_duration.preceded_by_grace_note:
+            onset = note.note_duration.xml_position
+            voice = note.voice
+            chords = [note for note in notes if \
+                      note.note_duration.xml_position == onset and \
+                      note.voice == voice and \
+                      not note.note_duration.is_grace_note]
+            for chd in chords:
+                chd.note_duration.preceded_by_grace_note = True
