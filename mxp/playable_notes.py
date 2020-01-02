@@ -8,19 +8,24 @@ def get_playable_notes(xml_part, melody_only=False):
         measure_number += 1
 
     notes, rests = classify_notes(notes, melody_only=melody_only)
+    print('check0')
     mark_preceded_by_grace_note_to_chord_notes(notes)
     if melody_only:
         notes = delete_chord_notes_for_melody(notes)
-
+    print('check1')
     notes = apply_tied_notes(notes)
     notes.sort(key=lambda x: (x.note_duration.xml_position,
                 x.note_duration.grace_order, -x.pitch[1]))
+    print('check2') 
     notes = check_overlapped_notes(notes)
+    print('check3')
     notes = apply_rest_to_note(notes, rests)
+    print('check4')
     notes = omit_trill_notes(notes)
+    print('check5')
     notes = extract_and_apply_slurs(notes)
     # notes = self.rearrange_chord_index(notes)
-    return notes
+    return notes, rests
 
 
 def classify_notes(notes, melody_only=False):
@@ -58,10 +63,10 @@ def classify_notes(notes, melody_only=False):
                     grc.note_duration.is_first_grace_note = True
                 grace_tmp = rest_grc
                 notes.append(note)
-            else:
-                assert note.is_rest
-                if note.is_print_object:
-                    rests.append(note)
+        else:
+            assert note.is_rest
+            if note.is_print_object:
+                rests.append(note)
 
     return notes, rests
 
