@@ -62,18 +62,19 @@ class Measure(object):
         self._parse_direction(child)
         direction = Direction(child, self.state)
         self.directions.append(direction)
-        self.state.previous_direction = direction
+        # self.state.previous_direction = direction
       elif child.tag == 'forward':
         self._parse_forward(child)
       elif child.tag == 'harmony':
         chord_symbol = ChordSymbol(child, self.state)
         self.chord_symbols.append(chord_symbol)
       elif child.tag == 'note':
-
         note = Note(child, self.state)
         self.notes.append(note)
         # Keep track of current note as previous note for chord timings
-        self.state.previous_note = note
+        self.state.previous_note_duration = note.note_duration.duration
+        self.state.previous_note_time_position = note.note_duration.time_position
+        self.state.previous_note_xml_position = note.note_duration.xml_position
 
         # Sum up the MusicXML durations in voice 1 of this measure
         if note.voice == 1 and not note.is_in_chord:

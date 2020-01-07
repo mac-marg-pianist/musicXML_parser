@@ -68,10 +68,12 @@ class MusicXMLParserState(object):
 
     # Keep track of previous note to get chord timing correct
     # This variable stores an instance of the Note class (defined below)
-    self.previous_note = None
+    self.previous_note_duration = 0
+    self.previous_note_time_position = 0
+    self.previous_note_xml_position = 0
 
     # Keep track of previous direction
-    self.previous_direction = None
+    # self.previous_direction = None
 
     # Keep track of current transposition level in +/- semitones.
     self.transpose = 0
@@ -527,7 +529,7 @@ class MusicXMLDocument(object):
           if grc.voice == note.voice:
             note.note_duration.preceded_by_grace_note = True
             grc.note_duration.grace_order = grace_order
-            grc.following_note = note
+            # grc.following_note = note
             if grc.chord_index == 0:
               grace_order -= 1
             added_grc.append(grc)
@@ -879,7 +881,6 @@ class MusicXMLDocument(object):
       # for note in measure.notes:
       #     note.on_beat = check_note_on_beat(note, measure_start, measure_length)
     return beat_piece
-
 
   def binary_index(self, alist, item):
     first = 0
