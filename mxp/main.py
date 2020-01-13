@@ -409,7 +409,7 @@ class MusicXMLDocument(object):
       notes.extend(notes_part)
       rests.extend(rests_part)
 
-    return notes
+    return notes, rests
 
 
   def find(self, f, seq):
