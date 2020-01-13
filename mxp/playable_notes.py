@@ -8,21 +8,15 @@ def get_playable_notes(xml_part, melody_only=False):
         measure_number += 1
 
     notes, rests = classify_notes(notes, melody_only=melody_only)
-    print('check0')
     mark_preceded_by_grace_note_to_chord_notes(notes)
     if melody_only:
         notes = delete_chord_notes_for_melody(notes)
-    print('check1')
     notes = apply_tied_notes(notes)
     notes.sort(key=lambda x: (x.note_duration.xml_position,
                 x.note_duration.grace_order, -x.pitch[1]))
-    print('check2') 
     notes = check_overlapped_notes(notes)
-    print('check3')
     notes = apply_rest_to_note(notes, rests)
-    print('check4')
     notes = omit_trill_notes(notes)
-    print('check5')
     notes = extract_and_apply_slurs(notes)
     # notes = self.rearrange_chord_index(notes)
     return notes, rests
@@ -33,13 +27,14 @@ def classify_notes(notes, melody_only=False):
     # calculate grace note order, mark note with preceeding grace notes
     grace_tmp = []
     rests = []
+    notes_tmp = []
     for note in notes:
         if melody_only:
             if note.voice != 1:
                 continue
         if note.note_duration.is_grace_note:
             grace_tmp.append(note)
-            notes.append(note)
+            notes_tmp.append(note)
         elif not note.is_rest:
             if len(grace_tmp) > 0:
                 rest_grc = []
@@ -62,13 +57,13 @@ def classify_notes(notes, melody_only=False):
                 if abs(grc.note_duration.grace_order) == num_added:
                     grc.note_duration.is_first_grace_note = True
                 grace_tmp = rest_grc
-                notes.append(note)
+            notes_tmp.append(note)
         else:
             assert note.is_rest
             if note.is_print_object:
                 rests.append(note)
 
-    return notes, rests
+    return notes_tmp, rests
 
 
 def mark_preceded_by_grace_note_to_chord_notes(notes):
