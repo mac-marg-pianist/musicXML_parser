@@ -882,6 +882,17 @@ class MusicXMLDocument(object):
       #     note.on_beat = check_note_on_beat(note, measure_start, measure_length)
     return beat_piece
 
+  def extract_accidental(self):
+    directions = []
+    accs = ['#', '♭', '♮']
+    # accs = ' # ♭ ♮ '
+    for part in self.parts:
+      for measure in part.measures:
+        for direction in measure.directions:
+          if direction.type['type'] == 'words' and direction.type['content'] in accs:
+            directions.append(direction)
+    return directions
+
   def binary_index(self, alist, item):
     first = 0
     last = len(alist)-1
