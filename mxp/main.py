@@ -543,7 +543,7 @@ class MusicXMLDocument(object):
       #     note.on_beat = check_note_on_beat(note, measure_start, measure_length)
     return beat_piece
 
-  def extract_accidental(self):
+  def get_accidentals(self):
     directions = []
     accs = ['#', '♭', '♮']
     # accs = ' # ♭ ♮ '
