@@ -103,8 +103,8 @@ class Direction(object):
           content = content.replace('<sym>dynamicNiente</sym>', 'n')
         while '<sym>dynamicZ</sym>' in content:
           content = content.replace('<sym>dynamicZ</sym>', 'z')
-
-      self.type = {'type':'words', 'content': content}
+      if content is not None:
+        self.type = {'type':'words', 'content': content}
     else:
       self.type = {'type':'dynamic', 'content': dynamic}
 
