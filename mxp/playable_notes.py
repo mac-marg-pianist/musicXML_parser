@@ -215,7 +215,7 @@ def omit_trill_notes(notes):
         num_wavy = len(wavy_lines)
         for i in reversed(range(num_wavy)):
             wavy = wavy_lines[i]
-            if wavy.type == 'start' and wavy.end_xml_position == 0:
+            if wavy.end_xml_position == 0:
                 wavy_lines.remove(wavy)
         return wavy_lines
 
