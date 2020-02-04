@@ -210,8 +210,8 @@ def omit_trill_notes(notes):
                         wavy_lines.remove(wavy)
                         deleted = True
                         break
-                    if not deleted:
-                        wavy_lines.remove(wavy)
+                if not deleted:
+                    wavy_lines.remove(wavy)
         num_wavy = len(wavy_lines)
         for i in reversed(range(num_wavy)):
             wavy = wavy_lines[i]
