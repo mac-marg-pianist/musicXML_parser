@@ -109,12 +109,18 @@ class Notations(object):
         self.is_mordent = True
       if tag == 'wavy-line':
         type = child.attrib['type']
-        number = child.attrib['number']
+        if 'number' in child.attrib:
+          number = child.attrib['number']
+        else:
+          number = 1
         self.wavy_line = WavyLine(type, number)
 
   def _parse_slur(self, xml_slurs):
     type = xml_slurs.attrib['type']
-    number = xml_slurs.attrib['number']
+    if 'number' in xml_slurs.attrib:
+      number = xml_slurs.attrib['number']
+    else:
+      number=1
     self.slurs.append(Slur(type, number))
 
 
