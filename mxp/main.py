@@ -853,10 +853,11 @@ class MusicXMLDocument(object):
       inter_beat_interval = full_measure_length / num_beat_in_measure
       if actual_measure_length != full_measure_length:
         measure.implicit = True
+      else:
+        measure.implicit = False
 
       if measure.implicit:
-        current_measure_length = piano.measures[i + 1].start_xml_position - measure_start
-        length_ratio = current_measure_length / full_measure_length
+        length_ratio = actual_measure_length / full_measure_length
         minimum_beat = 1 / num_beat_in_measure
         num_beat_in_measure = int(math.ceil(length_ratio / minimum_beat))
         if i == 0:
