@@ -15,13 +15,13 @@ from abc import abstractmethod
 from tqdm import tqdm
 import _pickle as cPickle
 
-from .musicxml_parser import MusicXMLDocument
-from .midi_utils import midi_utils
-from . import score_as_graph as score_graph, xml_midi_matching as matching
-from . import xml_utils
-from . import feature_extraction
+from musicxml_parser import MusicXMLDocument
+from midi_utils import midi_utils
+import score_as_graph as score_graph, xml_midi_matching as matching
+import xml_utils
+import feature_extraction
 
-align_dir = '/home/jdasam/AlignmentTool_v190813'
+align_dir = '/home/ilcobo2/projects/pyScoreParser/AlignmentTool_v190813'
 
 DEFAULT_SCORE_FEATURES = ['midi_pitch', 'duration', 'beat_importance', 'measure_length', 'qpm_primo',
                           'following_rest', 'distance_from_abs_dynamic', 'distance_from_recent_tempo',
@@ -245,7 +245,7 @@ class PieceData:
         for perform in perform_lists:
             perform_dat_path = Path(perform).parent / Path(perform).name.replace('.mid', '.dat')
             if not save:
-                if not perform_dat_path.exists:
+                if not perform_dat_path.exists():
                     print(f'not exist {perform_dat_path}.')
                 with open(perform_dat_path, 'rb') as f:
                     u = cPickle.Unpickler(f)
@@ -313,6 +313,8 @@ class PieceMeta:
         aligned_perf = []
         for perf in self.perform_lists:
             align_file_name = os.path.splitext(perf)[0] + '_infer_corresp.txt'
+            # align_file_name = Path(perf).parent / (Path(perf).stem + '_infer_corresp.txt')
+            print(align_file_name)
             if os.path.isfile(align_file_name):
                 aligned_perf.append(perf)
                 continue
@@ -331,7 +333,7 @@ class PieceMeta:
         current_dir = os.getcwd()
         try:
             os.chdir(align_dir)
-            subprocess.check_call(["sudo", "sh", "MIDIToMIDIAlign.sh", "score", "infer"])
+            subprocess.check_call(["sh", "MIDIToMIDIAlign.sh", "score", "infer"])
         except:
             print('Error to process {}'.format(midi_file_path))
             print('Trying to fix MIDI file {}'.format(midi_file_path))
@@ -341,8 +343,9 @@ class PieceMeta:
             shutil.copy(midi_file_path, os.path.join(align_dir, 'infer.mid'))
             try:
                 os.chdir(align_dir)
-                subprocess.check_call(["sudo", "sh", "MIDIToMIDIAlign.sh", "score", "infer"])
-            except:
+                subprocess.check_call(["sh", "MIDIToMIDIAlign.sh", "score", "infer"])
+            except subprocess.CalledProcessError as error:
+                print(error)
                 align_success = False
                 print('Fail to process {}'.format(midi_file_path))
                 os.chdir(current_dir)
@@ -356,6 +359,7 @@ class PieceMeta:
             shutil.move('infer_match.txt', midi_file_path.replace('.mid', '_infer_match.txt'))
             shutil.move('infer_spr.txt', midi_file_path.replace('.mid', '_infer_spr.txt'))
             shutil.move('score_spr.txt', os.path.join(align_dir, '_score_spr.txt'))
+            shutil.copy('score_fmt3x.txt', score_midi_path.replace('.mid', 'score_fmt3x.txt'))
             os.chdir(current_dir)
 
 
