@@ -215,7 +215,7 @@ class PieceData:
             with open(score_dat_path , 'wb') as f:
                 pickle.dump(self.score, f, protocol=2)
         else:
-            if Path(score_dat_path).exists:
+            if Path(score_dat_path).exists():
                 with open(score_dat_path, 'rb') as f:
                     u = cPickle.Unpickler(f)
                     self.score = u.load()
