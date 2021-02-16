@@ -31,14 +31,13 @@ class NoteDuration(object):
     self.num_grace = 0
     self.is_first_grace_note = False
 
-
   def parse_duration(self, is_in_chord, is_grace_note, duration):
     """Parse the duration of a note and compute timings."""
     self.duration = int(duration)
     # Due to an error in Sibelius' export, force this note to have the
     # duration of the previous note if it is in a chord
     if is_in_chord:
-      self.duration = self.state.previous_note.note_duration.duration
+      self.duration = self.state.previous_note_duration
 
     self.midi_ticks = self.duration
     self.midi_ticks *= (constants.STANDARD_PPQ / self.state.divisions)
@@ -58,8 +57,8 @@ class NoteDuration(object):
       # If this is a chord, set the time position to the time position
       # of the previous note (i.e. all the notes in the chord will have
       # the same time position)
-      self.time_position = self.state.previous_note.note_duration.time_position
-      self.xml_position = self.state.previous_note.note_duration.xml_position
+      self.time_position = self.state.previous_note_time_position
+      self.xml_position = self.state.previous_note_xml_position
       # pass
     else:
       # Only increment time positions once in chord

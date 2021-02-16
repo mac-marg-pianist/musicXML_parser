@@ -33,7 +33,7 @@ class Note(object):
     self.staff = 1
     self.chord_index = 0
     self.pedal = NotePedal()
-    self.following_note = None  # for grace note
+    # self.following_note = None  # for grace note
     self.on_beat = False
     self.is_print_object = True
     self.following_rest_duration = 0
