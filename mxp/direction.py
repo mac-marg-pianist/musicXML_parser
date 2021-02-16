@@ -20,6 +20,7 @@ class Direction(object):
     self.type = {'type': None, 'content': None}
     self.state = copy.copy(state)
     self.placement = None
+    self.staff = None
     self.time_position = state.time_position
     self.xml_position = state.xml_position
     self._parse()
@@ -31,24 +32,25 @@ class Direction(object):
     child_list = direction.find('direction-type').getchildren()
     if len(child_list) == 0:
       return
-    child = child_list[0]
     staff = direction.find('staff')
-    self.staff = staff.text
+    if staff is not None:
+      self.staff = staff.text
     if 'placement' in direction.attrib.keys():
       self.placement = direction.attrib['placement']
-    if child is not None:
-      if child.tag == "dynamics":
-        self._parse_dynamics(child)
-      elif child.tag == "pedal":
-        self._parse_pedal(child)
-      elif child.tag == "wedge":
-        self._parse_wedge(child) 
-      elif child.tag == "words" or child.tag=="other-dynamics":
-        self._parse_words(child)
-      elif child.tag=='octave-shift':
-        self._parse_octave_shift(child)
-      elif child.tag=='metronome':
-        self._parse_metronome(child)
+    for child in child_list:
+      if child is not None:
+        if child.tag == "dynamics":
+          self._parse_dynamics(child)
+        elif child.tag == "pedal":
+          self._parse_pedal(child)
+        elif child.tag == "wedge":
+          self._parse_wedge(child)
+        elif child.tag == "words" or child.tag=="other-dynamics":
+          self._parse_words(child)
+        elif child.tag=='octave-shift':
+          self._parse_octave_shift(child)
+        elif child.tag=='metronome':
+          self._parse_metronome(child)
 
 
   def _parse_pedal(self, xml_pedal):
@@ -86,7 +88,23 @@ class Direction(object):
     dynamic = xml_dynamics.getchildren()[0].tag
     if dynamic == 'other-dynamics':
       content = xml_dynamics.getchildren()[0].text
-      self.type = {'type':'words', 'content': content}
+      if content:
+        while '<sym>dynamicPiano</sym>' in content:
+          content = content.replace('<sym>dynamicPiano</sym>', 'p')
+        while '<sym>dynamicForte</sym>' in content:
+          content = content.replace('<sym>dynamicForte</sym>', 'f')
+        while '<sym>dynamicMezzo</sym>' in content:
+          content = content.replace('<sym>dynamicMezzo</sym>', 'm')
+        while '<sym>dynamicSforzando</sym>' in content:
+          content = content.replace('<sym>dynamicSforzando</sym>', 'sf')
+        while '<sym>dynamicRinforzando</sym>' in content:
+          content = content.replace('<sym>dynamicRinforzando</sym>', 'r')
+        while '<sym>dynamicNiente</sym>' in content:
+          content = content.replace('<sym>dynamicNiente</sym>', 'n')
+        while '<sym>dynamicZ</sym>' in content:
+          content = content.replace('<sym>dynamicZ</sym>', 'z')
+      if content is not None:
+        self.type = {'type':'words', 'content': content}
     else:
       self.type = {'type':'dynamic', 'content': dynamic}
 
@@ -124,8 +142,10 @@ class Direction(object):
       xml_wedge: XML element with tag type 'wedge'.
     """
     # self.type = {'type':'words', 'content': xml_words.text.decode('utf-8')}
-    self.type = {'type': 'words', 'content': xml_words.text}
-
+    if self.type['content'] is None:
+      self.type = {'type': 'words', 'content': xml_words.text}
+    else:
+      self.type['content'] += xml_words.text
 
   def _parse_octave_shift(self, xml_shift):
     """Parse the MusicXML <octave-shift> element.

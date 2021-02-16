@@ -2,6 +2,8 @@ class NoteDynamic:
   def __init__(self):
     self.absolute = None
     self.relative = []
+    self.absolute_position = 0
+    self.cresciuto = None
 
 
 class NoteTempo:
@@ -10,6 +12,7 @@ class NoteTempo:
     self.relative = []
     self.time_numerator = 0
     self.time_denominator = 0
+    self.recently_changed_position = 0
 
 
 class NotePedal:

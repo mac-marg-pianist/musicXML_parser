@@ -11,6 +11,7 @@ from __future__ import print_function
 from fractions import Fraction
 import xml.etree.ElementTree as ET
 import zipfile
+import math
 from .exception import MusicXMLParseException, MultipleTimeSignatureException
 
 # internal imports
@@ -23,6 +24,7 @@ from .tempo import Tempo
 from .key_signature import KeySignature
 from .score_part import ScorePart
 from .part import Part
+from .playable_notes import get_playable_notes
 
 DEFAULT_MIDI_PROGRAM = 0  # Default MIDI Program (0 = grand piano)
 DEFAULT_MIDI_CHANNEL = 0  # Default MIDI Channel (0 = first channel)
@@ -67,10 +69,12 @@ class MusicXMLParserState(object):
 
     # Keep track of previous note to get chord timing correct
     # This variable stores an instance of the Note class (defined below)
-    self.previous_note = None
+    self.previous_note_duration = 0
+    self.previous_note_time_position = 0
+    self.previous_note_xml_position = 0
 
     # Keep track of previous direction
-    self.previous_direction = None
+    # self.previous_direction = None
 
     # Keep track of current transposition level in +/- semitones.
     self.transpose = 0
@@ -86,6 +90,14 @@ class MusicXMLParserState(object):
 
     # Keep track of measure number
     self.measure_number = 0
+
+    # Keep track of unsolved ending bracket
+    self.first_ending_discontinue = False
+
+    # Keep track of beam status
+    self.is_beam_start = False
+    self.is_beam_continue = False
+    self.is_beam_stop = False
 
 
 
@@ -111,7 +123,7 @@ class MusicXMLDocument(object):
     self.total_time_secs = 0
     self.total_time_duration = 0
     self._parse()
-    self.recalculate_time_position()
+    self._recalculate_time_position()
 
   @staticmethod
   def _get_score(filename):
@@ -233,6 +245,44 @@ class MusicXMLDocument(object):
         self.total_time_secs = self._state.time_position
       if self._state.xml_position > self.total_time_duration:
         self.total_time_duration = self._state.xml_position
+
+  def _recalculate_time_position(self):
+    """ Sometimes, the tempo marking is not located in the first voice.
+    Therefore, the time position of each object should be calculate after parsing the entire tempo objects.
+
+    """
+    tempos = self.get_tempos()
+
+    tempos.sort(key=lambda x: x.xml_position)
+    if tempos[0].xml_position != 0:
+      default_tempo = Tempo(self._state)
+      default_tempo.xml_position = 0
+      default_tempo.time_position = 0
+      default_tempo.qpm = constants.DEFAULT_QUARTERS_PER_MINUTE
+      default_tempo.state.divisions = tempos[0].state.divisions
+      tempos.insert(0, default_tempo)
+    new_time_position = 0
+    for i in range(len(tempos)):
+      tempos[i].time_position = new_time_position
+      if i + 1 < len(tempos):
+        new_time_position += (tempos[i + 1].xml_position - tempos[i].xml_position) / tempos[i].qpm * 60 / tempos[
+          i].state.divisions
+
+    for part in self.parts:
+      for measure in part.measures:
+        for note in measure.notes:
+          for i in range(len(tempos)):
+            if i + 1 == len(tempos):
+              current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
+              break
+            else:
+              if tempos[i].xml_position <= note.note_duration.xml_position and tempos[
+                i + 1].xml_position > note.note_duration.xml_position:
+                current_tempo = tempos[i].qpm / 60 * tempos[i].state.divisions
+                break
+          note.note_duration.time_position = tempos[i].time_position + (
+                  note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
+          note.note_duration.seconds = note.note_duration.duration / current_tempo
 
   def get_chord_symbols(self):
     """Return a list of all the chord symbols used in this score."""
@@ -364,3 +414,200 @@ class MusicXMLDocument(object):
           note.note_duration.time_position = tempos[i].time_position + (
                 note.note_duration.xml_position - tempos[i].xml_position) / current_tempo
           note.note_duration.seconds = note.note_duration.duration / current_tempo
+  def get_measure_positions(self):
+    part = self.parts[0]
+    measure_positions = []
+
+    for measure in part.measures:
+      measure_positions.append(measure.start_xml_position)
+
+    return measure_positions
+
+
+  def get_notes(self, melody_only=False, grace_note=True):
+    notes = []
+    rests = []
+    num_parts = len(self.parts)
+    for instrument_index in range(num_parts):
+      part = self.parts[instrument_index]
+
+      notes_part, rests_part = get_playable_notes(part)
+      notes.extend(notes_part)
+      rests.extend(rests_part)
+
+    return notes, rests
+
+
+  def find(self, f, seq):
+    items_list = []
+    for item in seq:
+      if f(item):
+        items_list.append(item)
+    return items_list
+
+  def rearrange_chord_index(self, xml_notes):
+    # assert all(xml_notes[i].pitch[1] >= xml_notes[i + 1].pitch[1] for i in range(len(xml_notes) - 1)
+    #            if xml_notes[i].note_duration.xml_position ==xml_notes[i+1].note_duration.xml_position)
+
+    previous_position = [-1]
+    max_chord_index = [0]
+    for note in xml_notes:
+      voice = note.voice - 1
+      while voice >= len(previous_position):
+        previous_position.append(-1)
+        max_chord_index.append(0)
+      if note.note_duration.is_grace_note:
+        continue
+      if note.staff == 1:
+        if note.note_duration.xml_position > previous_position[voice]:
+          previous_position[voice] = note.note_duration.xml_position
+          max_chord_index[voice] = note.chord_index
+          note.chord_index = 0
+        else:
+          note.chord_index = (max_chord_index[voice] - note.chord_index)
+      else:  # note staff ==2
+        pass
+
+    return xml_notes
+
+  def get_directions(self):
+    directions = []
+    for part in self.parts:
+        for measure in part.measures:
+            for direction in measure.directions:
+                directions.append(direction)
+
+    directions.sort(key=lambda x: x.xml_position)
+    cleaned_direction = []
+    for i in range(len(directions)):
+        dir = directions[i]
+        if not dir.type == None:
+            if dir.type['type'] == "none":
+                for j in range(i):
+                    prev_dir = directions[i-j-1]
+                    if 'number' in prev_dir.type.keys():
+                        prev_key = prev_dir.type['type']
+                        prev_num = prev_dir.type['number']
+                    else:
+                        continue
+                    if prev_num == dir.type['number']:
+                        if prev_key == "crescendo":
+                            dir.type['type'] = 'crescendo'
+                            break
+                        elif prev_key == "diminuendo":
+                            dir.type['type'] = 'diminuendo'
+                            break
+            cleaned_direction.append(dir)
+        else:
+            print(vars(dir.xml_direction))
+
+    return cleaned_direction
+
+  def get_beat_positions(self, in_measure_level=False):
+    piano = self.parts[0]
+    num_measure = len(piano.measures)
+    time_signatures = self.get_time_signatures()
+    time_sig_position = [time.xml_position for time in time_signatures]
+    beat_piece = []
+    for i in range(num_measure):
+      measure = piano.measures[i]
+      measure_start = measure.start_xml_position
+      corresp_time_sig_idx = self.binary_index(time_sig_position, measure_start)
+      corresp_time_sig = time_signatures[corresp_time_sig_idx]
+      # corresp_time_sig = measure.time_signature
+      full_measure_length = corresp_time_sig.state.divisions * corresp_time_sig.numerator / corresp_time_sig.denominator * 4
+      if i < num_measure - 1:
+        actual_measure_length = piano.measures[i + 1].start_xml_position - measure_start
+      else:
+        actual_measure_length = full_measure_length
+
+      # if i +1 < num_measure:
+      #     measure_length = piano.measures[i+1].start_xml_position - measure_start
+      # else:
+      #     measure_length = measure_start - piano.measures[i-1].start_xml_position
+
+      num_beat_in_measure = corresp_time_sig.numerator
+      if in_measure_level:
+        num_beat_in_measure = 1
+      elif num_beat_in_measure == 6:
+        num_beat_in_measure = 2
+      elif num_beat_in_measure == 9:
+        num_beat_in_measure = 3
+      elif num_beat_in_measure == 12:
+        num_beat_in_measure = 4
+      elif num_beat_in_measure == 18:
+        num_beat_in_measure = 3
+      elif num_beat_in_measure == 24:
+        num_beat_in_measure = 4
+      inter_beat_interval = full_measure_length / num_beat_in_measure
+      if actual_measure_length != full_measure_length:
+        measure.implicit = True
+      else:
+        measure.implicit = False
+
+      if measure.implicit:
+        length_ratio = actual_measure_length / full_measure_length
+        minimum_beat = 1 / num_beat_in_measure
+        num_beat_in_measure = int(math.ceil(length_ratio / minimum_beat))
+        if i == 0:
+          for j in range(-num_beat_in_measure, 0):
+            beat = piano.measures[i + 1].start_xml_position + j * inter_beat_interval
+            if len(beat_piece) > 0 and beat > beat_piece[-1]:
+              beat_piece.append(beat)
+            elif len(beat_piece) == 0:
+              beat_piece.append(beat)
+        else:
+          for j in range(0, num_beat_in_measure):
+            beat = piano.measures[i].start_xml_position + j * inter_beat_interval
+            if beat > beat_piece[-1]:
+              beat_piece.append(beat)
+      else:
+        for j in range(num_beat_in_measure):
+          beat = measure_start + j * inter_beat_interval
+          beat_piece.append(beat)
+        #
+      # for note in measure.notes:
+      #     note.on_beat = check_note_on_beat(note, measure_start, measure_length)
+    return beat_piece
+
+  def get_accidentals(self):
+    directions = []
+    accs = ['#', '♭', '♮']
+    # accs = ' # ♭ ♮ '
+    for part in self.parts:
+      for measure in part.measures:
+        for direction in measure.directions:
+          if direction.type['type'] == 'words' and direction.type['content'] in accs:
+            directions.append(direction)
+    return directions
+
+  def binary_index(self, alist, item):
+    # better to move : utils.py
+    first = 0
+    last = len(alist)-1
+    midpoint = 0
+
+    if(item< alist[first]):
+        return 0
+
+    while first<last:
+        midpoint = (first + last)//2
+        currentElement = alist[midpoint]
+
+        if currentElement < item:
+            if alist[midpoint+1] > item:
+                return midpoint
+            else: first = midpoint +1
+            if first == last and alist[last] > item:
+                return midpoint
+        elif currentElement > item:
+            last = midpoint -1
+        else:
+            if midpoint +1 ==len(alist):
+                return midpoint
+            while alist[midpoint+1] == item:
+                midpoint += 1
+                if midpoint + 1 == len(alist):
+                    return midpoint
+            return midpoint
+    return last

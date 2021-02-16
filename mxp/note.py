@@ -33,11 +33,13 @@ class Note(object):
     self.staff = 1
     self.chord_index = 0
     self.pedal = NotePedal()
-    self.following_note = None  # for grace note
+    # self.following_note = None  # for grace note
     self.on_beat = False
     self.is_print_object = True
     self.following_rest_duration = 0
+    self.followed_by_fermata_rest = False
     self.measure_number = state.measure_number
+    self.accidental = None
 
     self._parse()
 
@@ -56,6 +58,9 @@ class Note(object):
         self.is_in_chord = True
         self.state.chord_index += 1
         self.chord_index = self.state.chord_index
+        self.note_notations.is_beam_start = self.state.is_beam_start
+        self.note_notations.is_beam_continue = self.state.is_beam_continue
+        self.note_notations.is_beam_stop = self.state.is_beam_stop
       elif child.tag == 'duration':  # if the note is_grace_note, the note does not have 'duration' child.
         self.note_duration.parse_duration(self.is_in_chord, self.is_grace_note, child.text)
         # if len(self.state.previous_grace_notes) > 0:
@@ -80,8 +85,16 @@ class Note(object):
       elif child.tag == 'grace':
         self.note_duration.parse_duration(self.is_in_chord, True, 0)
         self.state.previous_grace_notes.append(self)
+        if 'slash' in child.attrib.keys() and child.attrib['slash'] == 'yes':
+          self.note_notations.is_slash = True
       elif child.tag == 'staff':
         self.staff = int(child.text)
+      elif child.tag == 'cue':
+        self.note_notations.is_cue = True
+      elif child.tag == 'beam':
+        self._parse_beam(child.text)
+      elif child.tag == 'accidental':
+        self.accidental = child.text
       else:
         # Ignore other tag types because they are not relevant to mxp.
         pass
@@ -166,6 +179,18 @@ Args:
     pitch_class = (pitch_class + int(alter))
     midi_pitch = (12 + pitch_class) + (int(octave) * 12)
     return midi_pitch
+
+  def _parse_beam(self, beam_text):
+    if beam_text == 'begin':
+      self.note_notations.is_beam_start = True
+      self.state.is_beam_start = True
+    elif beam_text == 'end':
+      self.note_notations.is_beam_stop = True
+      self.state.is_beam_stop = True
+    elif beam_text == 'continue':
+      self.note_notations.is_beam_continue = True
+      self.state.is_beam_continue = True
+
 
   def __str__(self):
     note_string = '{duration: ' + str(self.note_duration.duration)

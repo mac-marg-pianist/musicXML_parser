@@ -29,14 +29,25 @@ class TimeSignature(object):
       # not supported (ex: alternating meter)
       raise AlternatingTimeSignatureException('Alternating Time Signature')
 
-    beats = self.xml_time.find('beats').text
-    beat_type = self.xml_time.find('beat-type').text
-    try:
-      self.numerator = int(beats)
-      self.denominator = int(beat_type)
-    except ValueError:
-      raise TimeSignatureParseException(
-        'Could not parse time signature: {}/{}'.format(beats, beat_type))
+    if 'symbol' in self.xml_time.attrib.keys():
+      symbol = self.xml_time.attrib['symbol']
+      if symbol == 'cut':
+        self.numerator = 2
+        self.denominator = 2
+      elif symbol == 'common':
+        self.numerator = 4
+        self.denominator = 4
+      else:
+        print('Unknown time signature symbol: ', symbol)
+    else:
+      beats = self.xml_time.find('beats').text
+      beat_type = self.xml_time.find('beat-type').text
+      try:
+        self.numerator = int(beats)
+        self.denominator = int(beat_type)
+      except ValueError:
+        raise TimeSignatureParseException(
+          'Could not parse time signature: {}/{}'.format(beats, beat_type))
     self.time_position = self.state.time_position
     self.xml_position = self.state.xml_position
 
