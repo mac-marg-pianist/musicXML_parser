@@ -69,10 +69,6 @@ class Measure(object):
         chord_symbol = ChordSymbol(child, self.state)
         self.chord_symbols.append(chord_symbol)
       elif child.tag == 'note':
-<<<<<<< HEAD
-
-=======
->>>>>>> master
         note = Note(child, self.state)
         self.notes.append(note)
         # Keep track of current note as previous note for chord timings
