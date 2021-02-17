@@ -2,6 +2,7 @@
 split data classes to an individual file
 '''
 import os
+import traceback
 import pickle
 import pandas
 import math
@@ -82,6 +83,7 @@ class DataSet:
             except Exception as ex:
                 # TODO: TGK: this is ambiguous. Can we specify which file 
                 # (score? performance? matching?) and in which function the error occur?
+                traceback.print_tb(ex.__traceback__)
                 print(f'Error while processing {scores[n]}. Error type :{ex}')
         self.num_performances = len(self.performances)
 
