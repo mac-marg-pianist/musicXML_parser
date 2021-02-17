@@ -6,6 +6,14 @@ this repository can be used for:
 - parse score xml into a note sequence while preserving score information.
 - match midi notes in performance midi to score note, and make combined representation.
 
+### initialization
+
+```
+git pull https://github.com/jdasam/pyScoreParser.git
+git submodule init
+git submodule update
+```
+
 ### usage
 
 ```
