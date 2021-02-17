@@ -281,7 +281,3 @@ class Measure(object):
         new_time_signature.xml_position = self.start_xml_position
         self.time_signature = new_time_signature
         self.state.time_signature = new_time_signature
-<<<<<<< HEAD
-=======
-
->>>>>>> master
