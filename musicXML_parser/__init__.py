@@ -1,1 +1,0 @@
-from .mxp import MusicXMLDocument
