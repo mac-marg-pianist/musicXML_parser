@@ -208,8 +208,6 @@ Args:
     note_string += '(@xml: ' + str(self.note_duration.xml_position) + ')'
     return note_string
 
-    pass
-
   def apply_previous_grace_notes(self):
     num_grace = 0
     corresp_grace = []
