@@ -185,6 +185,8 @@ class Measure(object):
           self.fine = True
         elif child.get('alcoda') is not None:
           self.coda = 'jump'
+        elif child.get('tocoda') is not None:
+          self.coda = 'jump'
         elif child.get('coda') is not None:
           self.coda = 'start'
         elif child.get('dalsegno') is not None:
